@@ -1,15 +1,19 @@
 import { Schema, model } from 'mongoose';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import { IRegistration } from '../types/models';
 
 /**
- * Generates a clean human-readable registration reference number
- * e.g., "ANV-202610-A1B2C3"
+ * Generates a unique 8-character alphanumeric confirmation reference
+ * e.g., "7K9XP2A4", avoiding ambiguous characters (0/O, 1/I).
  */
 export const generateRegistrationId = (): string => {
-  const dateStr = new Date().toISOString().slice(0, 7).replace('-', '');
-  const randomStr = uuidv4().replace(/-/g, '').slice(0, 6).toUpperCase();
-  return `ANV-${dateStr}-${randomStr}`;
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let result = '';
+  const bytes = crypto.randomBytes(8);
+  for (let i = 0; i < 8; i++) {
+    result += chars[bytes[i] % chars.length];
+  }
+  return result;
 };
 
 const RegistrationSchema = new Schema<IRegistration>(
@@ -17,6 +21,13 @@ const RegistrationSchema = new Schema<IRegistration>(
     _id: {
       type: String,
       default: generateRegistrationId,
+    },
+    referenceNumber: {
+      type: String,
+      default: function (this: any) {
+        return this._id || generateRegistrationId();
+      },
+      index: true,
     },
     eventId: {
       type: Schema.Types.ObjectId,
@@ -40,6 +51,18 @@ const RegistrationSchema = new Schema<IRegistration>(
       trim: true,
       lowercase: true,
     },
+    studentId: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: undefined,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: undefined,
+    },
     submittedAt: {
       type: Date,
       default: Date.now,
@@ -56,8 +79,16 @@ const RegistrationSchema = new Schema<IRegistration>(
   }
 );
 
-// Compound unique index prevents duplicate submissions per event using the specified identifier
+// Compound unique indexes preventing duplicate submissions per event (including concurrent requests)
 RegistrationSchema.index({ eventId: 1, identifier: 1 }, { unique: true });
+RegistrationSchema.index(
+  { eventId: 1, studentId: 1 },
+  { unique: true, partialFilterExpression: { studentId: { $type: 'string' } } }
+);
+RegistrationSchema.index(
+  { eventId: 1, email: 1 },
+  { unique: true, partialFilterExpression: { email: { $type: 'string' } } }
+);
 RegistrationSchema.index({ eventId: 1, submittedAt: -1 });
 RegistrationSchema.index({ isArchived: 1 });
 

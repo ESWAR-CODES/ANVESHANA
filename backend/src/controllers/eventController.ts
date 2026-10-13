@@ -5,6 +5,7 @@ import { Registration } from '../models/Registration';
 import { slugify } from '../utils/slugify';
 import { uploadImageBuffer, deleteCloudinaryImage, isCloudinaryConfigured } from '../config/cloudinary';
 import { getDbStatus } from '../config/db';
+import { validateFormSchemaDefinition } from '../utils/formValidator';
 
 const eventInputSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(100, 'Title cannot exceed 100 characters'),
@@ -117,7 +118,7 @@ export const getPublicEvents = async (req: Request, res: Response): Promise<void
 
     const [events, total] = await Promise.all([
       Event.find(filter)
-        .select('-formSchema') // Optimize payload for listing
+        .select('-formSchema -formHistory') // Optimize payload and protect schema history
         .sort(sortOrder)
         .skip(skip)
         .limit(limit)
@@ -128,8 +129,10 @@ export const getPublicEvents = async (req: Request, res: Response): Promise<void
     // Attach computed display state to each event
     const transformed = events.map((event) => {
       const doc = new Event(event);
+      const cleanEvent = { ...event };
+      delete (cleanEvent as any).formHistory;
       return {
-        ...event,
+        ...cleanEvent,
         computedStatus: doc.getComputedStatus(),
         isRegistrationOpen: doc.isRegistrationOpen(),
       };
@@ -177,7 +180,7 @@ export const getPublicEventBySlug = async (req: Request, res: Response): Promise
       slug: String(slugStr || '').toLowerCase().trim(),
       isPublished: true,
       isDeleted: false,
-    });
+    }).select('-formHistory');
 
     if (!event) {
       res.status(404).json({
@@ -189,6 +192,7 @@ export const getPublicEventBySlug = async (req: Request, res: Response): Promise
     }
 
     const eventJson = event.toJSON();
+    delete (eventJson as any).formHistory;
     const computedStatus = event.getComputedStatus();
     const isRegistrationOpen = event.isRegistrationOpen();
 
@@ -630,6 +634,121 @@ export const deleteAdminEvent = async (req: Request, res: Response): Promise<voi
       success: false,
       data: null,
       error: 'Failed to delete event',
+    });
+  }
+};
+
+/**
+ * Admin: Update event dynamic form schema.
+ * Enforces immutable form versioning and historical snapshotting.
+ * PUT /api/v1/admin/events/:id/form
+ */
+export const updateEventFormSchema = async (req: Request, res: Response): Promise<void> => {
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const { id } = req.params;
+    const { formSchema } = req.body;
+
+    const validationResult = validateFormSchemaDefinition(formSchema);
+    if (!validationResult.isValid || !validationResult.sanitizedSchema) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: validationResult.error || 'Invalid form schema configuration',
+      });
+      return;
+    }
+
+    const event = await Event.findOne({ _id: id, isDeleted: false });
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
+    const sanitizedSchema = validationResult.sanitizedSchema;
+
+    // Compare new schema against current event.formSchema
+    const currentSerialized = JSON.stringify(
+      (event.formSchema || []).map((f) => ({
+        id: f.id,
+        type: f.type,
+        label: f.label,
+        required: f.required,
+        choices: f.choices,
+        validation: f.validation,
+      }))
+    );
+    const newSerialized = JSON.stringify(
+      sanitizedSchema.map((f) => ({
+        id: f.id,
+        type: f.type,
+        label: f.label,
+        required: f.required,
+        choices: f.choices,
+        validation: f.validation,
+      }))
+    );
+    const hasChanged = currentSerialized !== newSerialized;
+
+    if (hasChanged) {
+      // If formHistory is empty and we had a previous non-empty schema, snapshot v1 first
+      if ((!event.formHistory || event.formHistory.length === 0) && event.formSchema && event.formSchema.length > 0) {
+        event.formHistory = [
+          {
+            version: event.formVersion || 1,
+            schema: event.formSchema,
+            publishedAt: new Date(),
+          },
+        ];
+      }
+
+      const nextVersion = (event.formVersion || 1) + 1;
+      event.formVersion = nextVersion;
+      event.formSchema = sanitizedSchema;
+
+      if (!event.formHistory) {
+        event.formHistory = [];
+      }
+      event.formHistory.push({
+        version: nextVersion,
+        schema: sanitizedSchema,
+        publishedAt: new Date(),
+      });
+
+      await event.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: event._id,
+        formVersion: event.formVersion,
+        formSchema: event.formSchema,
+        versionIncremented: hasChanged,
+      },
+      error: null,
+      message: hasChanged
+        ? `Form schema updated and published as version ${event.formVersion}.`
+        : 'Form schema saved with no changes.',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to update event registration form',
     });
   }
 };

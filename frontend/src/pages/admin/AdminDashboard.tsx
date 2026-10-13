@@ -6,6 +6,7 @@ import type { ClubEvent } from '../../types/event';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { EventModal } from '../../components/admin/EventModal';
+import { FormBuilderModal } from '../../components/admin/FormBuilderModal';
 
 export const AdminDashboard: React.FC = () => {
   const { admin, logout } = useAuth();
@@ -23,6 +24,10 @@ export const AdminDashboard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ClubEvent | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+
+  // Form Builder modal state
+  const [formBuilderEvent, setFormBuilderEvent] = useState<ClubEvent | null>(null);
+  const [isFormBuilderOpen, setIsFormBuilderOpen] = useState(false);
 
   // Delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<ClubEvent | null>(null);
@@ -67,6 +72,11 @@ export const AdminDashboard: React.FC = () => {
   const handleOpenEditModal = (event: ClubEvent) => {
     setSelectedEvent(event);
     setIsModalOpen(true);
+  };
+
+  const handleOpenFormBuilder = (event: ClubEvent) => {
+    setFormBuilderEvent(event);
+    setIsFormBuilderOpen(true);
   };
 
   const handleTogglePublish = async (event: ClubEvent) => {
@@ -379,6 +389,13 @@ export const AdminDashboard: React.FC = () => {
 
                         <td className="py-4 px-6 text-right space-x-2">
                           <button
+                            onClick={() => handleOpenFormBuilder(event)}
+                            className="px-2.5 py-1 bg-[#0B132B] hover:bg-[#F5A623] hover:text-[#0B132B] text-white rounded text-xs font-semibold transition-colors cursor-pointer"
+                          >
+                            Form Builder
+                          </button>
+
+                          <button
                             onClick={() => handleOpenEditModal(event)}
                             className="px-2.5 py-1 bg-gray-100 hover:bg-[#F5A623] hover:text-[#0B132B] rounded text-gray-700 font-medium transition-colors cursor-pointer"
                           >
@@ -426,6 +443,25 @@ export const AdminDashboard: React.FC = () => {
           fetchEvents();
         }}
       />
+
+      {/* Dynamic Form Builder Modal */}
+      {formBuilderEvent && (
+        <FormBuilderModal
+          isOpen={isFormBuilderOpen}
+          onClose={() => {
+            setIsFormBuilderOpen(false);
+            setFormBuilderEvent(null);
+          }}
+          eventId={formBuilderEvent._id}
+          eventTitle={formBuilderEvent.title}
+          initialSchema={formBuilderEvent.formSchema || []}
+          initialVersion={formBuilderEvent.formVersion || 1}
+          onSaved={(newVersion) => {
+            setActionNotice(`Form schema updated to Version ${newVersion} for "${formBuilderEvent.title}".`);
+            fetchEvents();
+          }}
+        />
+      )}
 
       {/* Delete / Soft-Archive Confirmation Dialog */}
       {deleteTarget && (

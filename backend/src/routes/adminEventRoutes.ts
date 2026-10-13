@@ -7,6 +7,7 @@ import {
   togglePublishEvent,
   archiveAdminEvent,
   deleteAdminEvent,
+  updateEventFormSchema,
 } from '../controllers/eventController';
 import { requireAdmin } from '../middlewares/auth';
 import { handleBannerUpload } from '../middlewares/upload';
@@ -20,6 +21,7 @@ router.get('/', getAdminEvents);
 router.get('/:id', getAdminEventById);
 router.post('/', handleBannerUpload, createAdminEvent);
 router.put('/:id', handleBannerUpload, updateAdminEvent);
+router.put('/:id/form', updateEventFormSchema);
 router.patch('/:id/publish', togglePublishEvent);
 router.patch('/:id/archive', archiveAdminEvent);
 router.delete('/:id', deleteAdminEvent);

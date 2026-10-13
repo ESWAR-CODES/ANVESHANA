@@ -68,4 +68,26 @@ export const eventService = {
     const res = await apiClient.delete(`/api/v1/admin/events/${id}`);
     return res.data;
   },
+
+  // Dynamic Form & Native Registration
+  getEventForm: async (identifier: string): Promise<{ success: boolean; data: any; error: string | null }> => {
+    const res = await apiClient.get(`/api/v1/events/${identifier}/form`);
+    return res.data;
+  },
+
+  registerForEvent: async (
+    identifier: string,
+    payload: { answers: Record<string, any>; studentId?: string; email?: string }
+  ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
+    const res = await apiClient.post(`/api/v1/events/${identifier}/register`, payload);
+    return res.data;
+  },
+
+  updateEventFormSchema: async (
+    id: string,
+    formSchema: any[]
+  ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
+    const res = await apiClient.put(`/api/v1/admin/events/${id}/form`, { formSchema });
+    return res.data;
+  },
 };

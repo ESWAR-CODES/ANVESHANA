@@ -17,7 +17,7 @@ const FormFieldConfigSchema = new Schema(
     id: { type: String, required: true },
     type: {
       type: String,
-      enum: ['text', 'textarea', 'email', 'phone', 'number', 'select', 'radio', 'checkbox', 'date'],
+      enum: ['text', 'textarea', 'email', 'phone', 'number', 'select', 'dropdown', 'radio', 'checkbox', 'date', 'url'],
       required: true,
     },
     label: { type: String, required: true, trim: true },
@@ -28,6 +28,15 @@ const FormFieldConfigSchema = new Schema(
     order: { type: Number, default: 0 },
     choices: [{ type: String, trim: true }],
     validation: { type: FormFieldValidationSchema, default: null },
+  },
+  { _id: false }
+);
+
+const FormVersionSnapshotSchema = new Schema(
+  {
+    version: { type: Number, required: true },
+    schema: { type: [FormFieldConfigSchema], required: true },
+    publishedAt: { type: Date, default: Date.now },
   },
   { _id: false }
 );
@@ -136,6 +145,10 @@ const EventSchema = new Schema<IEvent>(
       type: Number,
       default: 1,
       min: 1,
+    },
+    formHistory: {
+      type: [FormVersionSnapshotSchema],
+      default: [],
     },
     regOpenDate: {
       type: Date,

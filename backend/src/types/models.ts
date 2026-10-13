@@ -20,9 +20,11 @@ export type FormFieldType =
   | 'phone'
   | 'number'
   | 'select'
+  | 'dropdown'
   | 'radio'
   | 'checkbox'
-  | 'date';
+  | 'date'
+  | 'url';
 
 export interface FormFieldValidation {
   min?: number;
@@ -61,6 +63,12 @@ export interface IAdministrator extends Document {
   updatedAt: Date;
 }
 
+export interface IFormVersionSnapshot {
+  version: number;
+  schema: FormFieldConfig[];
+  publishedAt: Date;
+}
+
 export interface IEvent extends Document {
   _id: Types.ObjectId;
   title: string;
@@ -84,6 +92,7 @@ export interface IEvent extends Document {
   // Dynamic Form Builder & Registration additions
   formSchema: FormFieldConfig[];
   formVersion: number;
+  formHistory: IFormVersionSnapshot[];
   regOpenDate?: Date | null;
   regCloseDate?: Date | null;
   maxParticipants?: number | null;
@@ -99,11 +108,14 @@ export interface IEvent extends Document {
 }
 
 export interface IRegistration extends Document<string> {
-  _id: string; // Formatted reference number (e.g. ANV-202610-ABCD12)
+  _id: string; // Unique 8-character confirmation reference number
+  referenceNumber: string;
   eventId: Types.ObjectId;
   formVersion: number;
   answers: Record<string, any>;
   identifier: string; // Deduplication value (Student ID or Email)
+  studentId?: string | null;
+  email?: string | null;
   submittedAt: Date;
   isArchived: boolean;
   createdAt: Date;

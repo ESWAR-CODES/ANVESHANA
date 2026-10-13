@@ -5,14 +5,17 @@ import type { ClubEvent } from '../../types/event';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
+import { DynamicFormRenderer } from '../../components/events/DynamicFormRenderer';
+import type { FormFieldConfig } from '../../types/event';
 
 export const EventDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [event, setEvent] = useState<ClubEvent | null>(null);
+  const [formSchema, setFormSchema] = useState<FormFieldConfig[]>([]);
+  const [formVersion, setFormVersion] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [imageError, setImageError] = useState<boolean>(false);
-  const [registrationNotice, setRegistrationNotice] = useState<boolean>(false);
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -21,11 +24,27 @@ export const EventDetailPage: React.FC = () => {
       setErrorMessage(null);
 
       try {
-        const res = await eventService.getPublicEventBySlug(slug);
-        if (res.success && res.data) {
-          setEvent(res.data);
+        const [eventRes, formRes] = await Promise.allSettled([
+          eventService.getPublicEventBySlug(slug),
+          eventService.getEventForm(slug),
+        ]);
+
+        if (eventRes.status === 'fulfilled' && eventRes.value.success && eventRes.value.data) {
+          setEvent(eventRes.value.data);
         } else {
-          setErrorMessage(res.error || 'Event could not be found.');
+          const err = eventRes.status === 'rejected' ? eventRes.reason : null;
+          const msg =
+            err?.response?.status === 503
+              ? 'Database service is currently offline. Please configure MongoDB Atlas.'
+              : err?.response?.data?.error || 'Event could not be found.';
+          setErrorMessage(msg);
+          setIsLoading(false);
+          return;
+        }
+
+        if (formRes.status === 'fulfilled' && formRes.value.success && formRes.value.data) {
+          setFormSchema(formRes.value.data.formSchema || []);
+          setFormVersion(formRes.value.data.formVersion || 1);
         }
       } catch (err: any) {
         const msg =
@@ -103,6 +122,13 @@ export const EventDetailPage: React.FC = () => {
   const computedStatus = event.computedStatus || 'upcoming';
   const isOpen = computedStatus === 'open';
   const isFull = computedStatus === 'full';
+
+  const scrollToRegister = () => {
+    const el = document.getElementById('registration-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <div className="py-28 sm:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -223,10 +249,10 @@ export const EventDetailPage: React.FC = () => {
                 variant="primary"
                 size="lg"
                 fullWidth
-                onClick={() => setRegistrationNotice(true)}
+                onClick={scrollToRegister}
                 className="font-bold shadow-md shadow-[#F5A623]/20"
               >
-                Register Now
+                Register for Event ↓
               </Button>
             ) : isFull ? (
               <Button variant="secondary" size="lg" fullWidth disabled>
@@ -240,23 +266,6 @@ export const EventDetailPage: React.FC = () => {
               <Button variant="secondary" size="lg" fullWidth disabled>
                 Registrations Closed
               </Button>
-            )}
-
-            {registrationNotice && (
-              <div className="p-4 bg-amber-50 border-l-4 border-[#F5A623] rounded-lg text-xs text-amber-900 animate-fade-in flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-amber-950">Registration Notice</p>
-                  <p className="mt-0.5">
-                    Native dynamic event registration arrives in Phase 6. Student form rendering and capacity locking will mount directly on this page.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setRegistrationNotice(false)}
-                  className="text-amber-800 hover:text-amber-950 font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
             )}
           </div>
 
@@ -284,6 +293,38 @@ export const EventDetailPage: React.FC = () => {
             <p className="text-xs text-gray-600 leading-relaxed">
               {event.eligibility || 'Open for all Mohan Babu University (School of Computing & School of Engineering) students. Please carry your university identification.'}
             </p>
+          </div>
+
+          {/* Native Dynamic Registration Section */}
+          <div id="registration-section" className="pt-4 scroll-mt-28">
+            {isOpen ? (
+              formSchema.length > 0 ? (
+                <DynamicFormRenderer
+                  identifier={slug!}
+                  eventTitle={event.title}
+                  formSchema={formSchema}
+                  formVersion={formVersion}
+                />
+              ) : (
+                <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center space-y-2">
+                  <p className="font-serif text-lg font-bold text-[#0B132B]">Registration Opening Shortly</p>
+                  <p className="text-xs text-gray-500">The registration questions are currently being configured by the club coordinators.</p>
+                </div>
+              )
+            ) : (
+              <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 text-center space-y-2">
+                <p className="font-serif text-base font-bold text-[#0B132B]">
+                  {isFull ? 'Event Reached Full Capacity' : computedStatus === 'upcoming' ? 'Registration Opens Soon' : 'Registration Closed'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {isFull
+                    ? 'All seats for this event have been reserved.'
+                    : computedStatus === 'upcoming'
+                    ? 'Check back once the registration window opens.'
+                    : 'Registrations for this event have concluded.'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

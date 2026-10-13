@@ -159,7 +159,8 @@ describe('Mongoose Models Schema & Validation Tests', () => {
   describe('Registration Model', () => {
     it('generates properly formatted registration reference numbers', () => {
       const regId = generateRegistrationId();
-      expect(regId).toMatch(/^ANV-\d{6}-[A-Z0-9]{6}$/);
+      expect(regId).toHaveLength(8);
+      expect(regId).toMatch(/^[A-Z0-9]{8}$/);
     });
 
     it('validates a complete registration payload with answers snapshot', async () => {
@@ -176,7 +177,8 @@ describe('Mongoose Models Schema & Validation Tests', () => {
 
       const err = await registration.validate();
       expect(err).toBeUndefined();
-      expect(registration._id).toMatch(/^ANV-\d{6}-[A-Z0-9]{6}$/);
+      expect(registration._id).toHaveLength(8);
+      expect(registration._id).toMatch(/^[A-Z0-9]{8}$/);
     });
 
     it('rejects registrations missing required identifiers', async () => {
