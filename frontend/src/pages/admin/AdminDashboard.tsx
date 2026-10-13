@@ -9,6 +9,9 @@ import { EventModal } from '../../components/admin/EventModal';
 import { FormBuilderModal } from '../../components/admin/FormBuilderModal';
 import { ParticipantModal } from '../../components/admin/ParticipantModal';
 import { FeedbackModerationSection } from '../../components/admin/FeedbackModerationSection';
+import { GalleryManagementSection } from '../../components/admin/GalleryManagementSection';
+import { TeamManagementSection } from '../../components/admin/TeamManagementSection';
+import { ClubSettingsSection } from '../../components/admin/ClubSettingsSection';
 
 export const AdminDashboard: React.FC = () => {
   const { admin, logout } = useAuth();
@@ -219,6 +222,21 @@ export const AdminDashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
               <span>Feedback Review</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-left ${
+                activeTab === 'settings'
+                  ? 'bg-[#1C2541] text-[#F5A623] border border-[#F5A623]/30'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>Club Settings</span>
             </button>
           </nav>
         </div>
@@ -457,42 +475,14 @@ export const AdminDashboard: React.FC = () => {
           {/* Feedback Moderation Tab */}
           {activeTab === 'feedback' && <FeedbackModerationSection />}
 
-          {/* Placeholders for upcoming phases */}
-          {activeTab === 'gallery' && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
-              <div className="w-12 h-12 bg-amber-50 text-[#F5A623] rounded-full mx-auto flex items-center justify-center font-bold text-lg">
-                🖼️
-              </div>
-              <h3 className="font-serif text-lg font-bold text-[#0B132B]">Event Gallery Management</h3>
-              <p className="text-xs text-gray-500 max-w-md mx-auto">
-                Event photo gallery curation with 5MB upload limit is scheduled for upcoming phases. You can currently manage event banners and details under Events.
-              </p>
-            </div>
-          )}
+          {/* Event Gallery Management Tab */}
+          {activeTab === 'gallery' && <GalleryManagementSection />}
 
-          {activeTab === 'team' && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
-              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full mx-auto flex items-center justify-center font-bold text-lg">
-                👥
-              </div>
-              <h3 className="font-serif text-lg font-bold text-[#0B132B]">Team Management</h3>
-              <p className="text-xs text-gray-500 max-w-md mx-auto">
-                Core team hierarchy and member management across the 7 seeded categories is scheduled for upcoming phases.
-              </p>
-            </div>
-          )}
+          {/* Core Team Management Tab */}
+          {activeTab === 'team' && <TeamManagementSection />}
 
-          {activeTab === 'settings' && (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
-              <div className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full mx-auto flex items-center justify-center font-bold text-lg">
-                ⚙️
-              </div>
-              <h3 className="font-serif text-lg font-bold text-[#0B132B]">System Settings</h3>
-              <p className="text-xs text-gray-500 max-w-md mx-auto">
-                Admin configuration and credential policies are governed via environment variables.
-              </p>
-            </div>
-          )}
+          {/* Club Settings Tab */}
+          {activeTab === 'settings' && <ClubSettingsSection />}
         </main>
       </div>
 

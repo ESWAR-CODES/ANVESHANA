@@ -158,6 +158,7 @@ export interface ITeamMember extends Document {
   portfolioUrl?: string | null;
   displayOrder: number;
   isPublished: boolean;
+  isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

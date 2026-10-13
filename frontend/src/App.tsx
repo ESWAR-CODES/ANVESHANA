@@ -23,6 +23,7 @@ export function App() {
             <Route path="events/:slug" element={<EventDetailPage />} />
             <Route path="team" element={<TeamPage />} />
             <Route path="feedback" element={<FeedbackPage />} />
+            <Route path="contact" element={<Navigate to="/feedback" replace />} />
             <Route path="*" element={<NotFound />} />
           </Route>
 

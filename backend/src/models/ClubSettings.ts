@@ -32,6 +32,7 @@ const ClubSettingsSchema = new Schema<IClubSettings>(
     },
     contactEmail: {
       type: String,
+      required: [true, 'Contact email is required'],
       default: 'anveshana@mbu.edu.in',
       trim: true,
     },

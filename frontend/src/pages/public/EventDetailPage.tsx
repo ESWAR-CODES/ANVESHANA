@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { eventService } from '../../services/eventService';
+import { galleryService } from '../../services/galleryService';
 import type { ClubEvent } from '../../types/event';
+import type { GalleryImage } from '../../types/gallery';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
@@ -13,6 +15,8 @@ export const EventDetailPage: React.FC = () => {
   const [event, setEvent] = useState<ClubEvent | null>(null);
   const [formSchema, setFormSchema] = useState<FormFieldConfig[]>([]);
   const [formVersion, setFormVersion] = useState<number>(1);
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [previewImage, setPreviewImage] = useState<GalleryImage | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [imageError, setImageError] = useState<boolean>(false);
@@ -24,9 +28,10 @@ export const EventDetailPage: React.FC = () => {
       setErrorMessage(null);
 
       try {
-        const [eventRes, formRes] = await Promise.allSettled([
+        const [eventRes, formRes, galleryRes] = await Promise.allSettled([
           eventService.getPublicEventBySlug(slug),
           eventService.getEventForm(slug),
+          galleryService.getPublicGallery(slug),
         ]);
 
         if (eventRes.status === 'fulfilled' && eventRes.value.success && eventRes.value.data) {
@@ -45,6 +50,10 @@ export const EventDetailPage: React.FC = () => {
         if (formRes.status === 'fulfilled' && formRes.value.success && formRes.value.data) {
           setFormSchema(formRes.value.data.formSchema || []);
           setFormVersion(formRes.value.data.formVersion || 1);
+        }
+
+        if (galleryRes.status === 'fulfilled' && galleryRes.value.success && galleryRes.value.data) {
+          setGalleryImages(galleryRes.value.data.images || []);
         }
       } catch (err: any) {
         const msg =
@@ -328,6 +337,76 @@ export const EventDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Retrospective Event Gallery (Rendered strictly when event photos exist) */}
+      {galleryImages.length > 0 && (
+        <section className="mt-16 pt-12 border-t border-[#E2E8F0]">
+          <div className="mb-8">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#F5A623] bg-[#0B132B] px-3 py-1 rounded-full">
+              Event Memories
+            </span>
+            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#0B132B] mt-3">
+              Event Retrospective &amp; Gallery
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Moments, live presentations, and student projects captured during {event.title}.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {galleryImages.map((img, idx) => (
+              <div
+                key={img.publicId || idx}
+                onClick={() => setPreviewImage(img)}
+                className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-md transition-all"
+              >
+                <img
+                  src={img.url}
+                  alt={img.caption || `${event.title} photo ${idx + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                {img.caption && (
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-6 text-white text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">
+                    <p className="truncate font-medium">{img.caption}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Gallery Lightbox Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[90vh] bg-[#0B132B] rounded-2xl overflow-hidden shadow-2xl border border-white/20 p-2 flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black/80 flex items-center justify-center text-sm font-bold cursor-pointer"
+              aria-label="Close photo preview"
+            >
+              ✕
+            </button>
+            <img
+              src={previewImage.url}
+              alt={previewImage.caption || 'Event photo preview'}
+              className="max-h-[75vh] w-auto object-contain rounded-lg"
+            />
+            {previewImage.caption && (
+              <p className="text-white text-xs mt-3 px-4 py-1 text-center font-medium">
+                {previewImage.caption}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

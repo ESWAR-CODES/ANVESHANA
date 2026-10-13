@@ -62,13 +62,19 @@ const TeamMemberSchema = new Schema<ITeamMember>(
       required: true,
       default: true,
     },
+    isDeleted: {
+      type: Boolean,
+      required: true,
+      default: false,
+      index: true,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-TeamMemberSchema.index({ categoryId: 1, displayOrder: 1 });
-TeamMemberSchema.index({ isPublished: 1, displayOrder: 1 });
+TeamMemberSchema.index({ categoryId: 1, isDeleted: 1, displayOrder: 1 });
+TeamMemberSchema.index({ isPublished: 1, isDeleted: 1, displayOrder: 1 });
 
 export const TeamMember = model<ITeamMember>('TeamMember', TeamMemberSchema);

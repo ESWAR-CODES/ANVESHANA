@@ -10,6 +10,10 @@ import eventRoutes from './routes/eventRoutes';
 import adminEventRoutes from './routes/adminEventRoutes';
 import feedbackRoutes from './routes/feedbackRoutes';
 import adminFeedbackRoutes from './routes/adminFeedbackRoutes';
+import teamRoutes from './routes/teamRoutes';
+import adminTeamRoutes from './routes/adminTeamRoutes';
+import settingsRoutes from './routes/settingsRoutes';
+import adminSettingsRoutes from './routes/adminSettingsRoutes';
 import { requireAdmin } from './middlewares/auth';
 
 dotenv.config();
@@ -79,6 +83,14 @@ app.use('/api/v1/admin/events', adminEventRoutes);
 // Feedback Routes (Public & Admin)
 app.use('/api/v1/feedback', feedbackRoutes);
 app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
+
+// Team Routes (Public & Admin)
+app.use('/api/v1/team', teamRoutes);
+app.use('/api/v1/admin/team', adminTeamRoutes);
+
+// Club Settings Routes (Public & Admin)
+app.use('/api/v1/settings', settingsRoutes);
+app.use('/api/v1/admin/settings', adminSettingsRoutes);
 
 // Protected Admin Verification Endpoint (used by tests and session checks)
 app.get('/api/v1/admin/test-protected', requireAdmin, (req: Request, res: Response) => {

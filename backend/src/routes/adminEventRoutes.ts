@@ -14,8 +14,14 @@ import {
   getRegistrationDetails,
   exportEventRegistrations,
 } from '../controllers/participantController';
+import {
+  getAdminEventGallery,
+  uploadGalleryImage,
+  deleteGalleryImage,
+  updateGalleryImages,
+} from '../controllers/galleryController';
 import { requireAdmin } from '../middlewares/auth';
-import { handleBannerUpload } from '../middlewares/upload';
+import { handleBannerUpload, handleGalleryPhotoUpload } from '../middlewares/upload';
 
 const router = Router();
 
@@ -35,5 +41,12 @@ router.delete('/:id', deleteAdminEvent);
 router.get('/:id/registrations', getEventRegistrations);
 router.get('/:id/registrations/:registrationId', getRegistrationDetails);
 router.get('/:id/export', exportEventRegistrations);
+
+// Event Retrospective Gallery Endpoints (5MB per-photo limit)
+router.get('/:id/gallery', getAdminEventGallery);
+router.post('/:id/gallery', handleGalleryPhotoUpload, uploadGalleryImage);
+router.delete('/:id/gallery/:publicId', deleteGalleryImage);
+router.delete('/:id/gallery', deleteGalleryImage);
+router.put('/:id/gallery', updateGalleryImages);
 
 export default router;

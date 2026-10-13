@@ -20,6 +20,9 @@ const fileFilter = (
 // Memory storage for direct buffer streaming to Cloudinary
 const memoryStorage = multer.memoryStorage();
 
+/* =========================================================================
+   1. Event Banner Upload (2 MB Limit)
+   ========================================================================= */
 export const uploadBanner = multer({
   storage: memoryStorage,
   limits: {
@@ -28,9 +31,6 @@ export const uploadBanner = multer({
   fileFilter,
 }).single('banner');
 
-/**
- * Express wrapper handling Multer file upload errors gracefully.
- */
 export const handleBannerUpload = (
   req: Request,
   res: Response,
@@ -57,6 +57,94 @@ export const handleBannerUpload = (
         success: false,
         data: null,
         error: err.message || 'Error uploading file',
+      });
+      return;
+    }
+    next();
+  });
+};
+
+/* =========================================================================
+   2. Event Gallery Photo Upload (5 MB Limit)
+   ========================================================================= */
+export const uploadGalleryPhoto = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB limit per photo
+  },
+  fileFilter,
+}).single('image');
+
+export const handleGalleryPhotoUpload = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  uploadGalleryPhoto(req, res, (err: any) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Gallery photo file size exceeds the 5MB limit.',
+        });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: `Gallery upload error: ${err.message}`,
+      });
+      return;
+    } else if (err) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: err.message || 'Error uploading gallery photo',
+      });
+      return;
+    }
+    next();
+  });
+};
+
+/* =========================================================================
+   3. Team Member Profile Photo Upload (2 MB Limit)
+   ========================================================================= */
+export const uploadTeamPhoto = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2 MB limit
+  },
+  fileFilter,
+}).single('profileImage');
+
+export const handleTeamPhotoUpload = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  uploadTeamPhoto(req, res, (err: any) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Profile photo file size exceeds the 2MB limit.',
+        });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: `Team photo upload error: ${err.message}`,
+      });
+      return;
+    } else if (err) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: err.message || 'Error uploading profile photo',
       });
       return;
     }
