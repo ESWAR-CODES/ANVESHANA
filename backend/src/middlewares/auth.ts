@@ -45,7 +45,7 @@ export const isAuth = async (req: Request, res: Response, next: NextFunction): P
       return;
     }
 
-    // If database is connected, verify account status against database record
+    // Verify account status against database record
     const dbStatus = getDbStatus();
     if (dbStatus.connected) {
       const admin = await Administrator.findById(decoded.id);
@@ -72,9 +72,16 @@ export const isAuth = async (req: Request, res: Response, next: NextFunction): P
         email: admin.email,
         role: admin.role,
       };
-    } else {
-      // In offline/mock test mode when DB connection is not active
+    } else if (process.env.NODE_ENV === 'test') {
+      // In offline unit test mode, attach verified decoded payload
       req.admin = decoded;
+    } else {
+      res.status(503).json({
+        success: false,
+        data: null,
+        error: 'Database connection unavailable. Persistent storage is offline.',
+      });
+      return;
     }
 
     next();

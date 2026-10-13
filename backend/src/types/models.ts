@@ -2,7 +2,14 @@ import { Document, Types } from 'mongoose';
 
 export type AdminRole = 'admin' | 'superadmin';
 
-export type EventStatus = 'upcoming' | 'open' | 'closed' | 'completed' | 'archived';
+export type EventStatus =
+  | 'upcoming'
+  | 'open'
+  | 'closed'
+  | 'completed'
+  | 'archived'
+  | 'draft'
+  | 'published';
 
 export type DeduplicationRule = 'studentId' | 'email';
 
@@ -58,6 +65,7 @@ export interface IEvent extends Document {
   _id: Types.ObjectId;
   title: string;
   slug: string;
+  category: string;
   shortDescription: string;
   fullDescription: string;
   bannerMedia: MediaAsset;
@@ -70,6 +78,8 @@ export interface IEvent extends Document {
   status: EventStatus;
   isPublished: boolean;
   isArchived: boolean;
+  isDeleted: boolean;
+  registeredCount: number;
   
   // Dynamic Form Builder & Registration additions
   formSchema: FormFieldConfig[];
@@ -84,7 +94,8 @@ export interface IEvent extends Document {
 
   // Instance methods
   isRegistrationOpen(): boolean;
-  canAcceptRegistrations(currentCount: number): { allowed: boolean; reason?: string };
+  canAcceptRegistrations(currentCount?: number): { allowed: boolean; reason?: string };
+  getComputedStatus(): string;
 }
 
 export interface IRegistration extends Document<string> {

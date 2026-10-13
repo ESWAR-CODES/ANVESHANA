@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { Home } from './pages/public/Home';
 import { EventsPage } from './pages/public/EventsPage';
+import { EventDetailPage } from './pages/public/EventDetailPage';
 import { TeamPage } from './pages/public/TeamPage';
 import { FeedbackPage } from './pages/public/FeedbackPage';
 import { NotFound } from './pages/public/NotFound';
@@ -19,6 +20,7 @@ export function App() {
           <Route path="/" element={<PublicLayout />}>
             <Route index element={<Home />} />
             <Route path="events" element={<EventsPage />} />
+            <Route path="events/:slug" element={<EventDetailPage />} />
             <Route path="team" element={<TeamPage />} />
             <Route path="feedback" element={<FeedbackPage />} />
             <Route path="*" element={<NotFound />} />

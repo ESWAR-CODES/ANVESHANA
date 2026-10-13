@@ -55,6 +55,11 @@ const EventSchema = new Schema<IEvent>(
       lowercase: true,
       trim: true,
     },
+    category: {
+      type: String,
+      default: 'Workshop',
+      trim: true,
+    },
     shortDescription: {
       type: String,
       required: [true, 'Short description is required'],
@@ -99,7 +104,7 @@ const EventSchema = new Schema<IEvent>(
     },
     status: {
       type: String,
-      enum: ['upcoming', 'open', 'closed', 'completed', 'archived'],
+      enum: ['upcoming', 'open', 'closed', 'completed', 'archived', 'draft', 'published'],
       default: 'upcoming',
       required: true,
     },
@@ -112,6 +117,16 @@ const EventSchema = new Schema<IEvent>(
       type: Boolean,
       default: false,
       required: true,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    registeredCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
     formSchema: {
       type: [FormFieldConfigSchema],
@@ -152,12 +167,21 @@ EventSchema.index({ slug: 1 }, { unique: true });
 EventSchema.index({ status: 1, eventDate: -1 });
 EventSchema.index({ isPublished: 1, eventDate: 1 });
 EventSchema.index({ isArchived: 1 });
+EventSchema.index({ isDeleted: 1 });
 
 /**
  * Checks if registration is currently open for this event based on state and timing.
  */
 EventSchema.methods.isRegistrationOpen = function (): boolean {
-  if (this.isArchived || !this.isPublished || this.status !== 'open') {
+  if (
+    this.isDeleted ||
+    this.isArchived ||
+    !this.isPublished ||
+    this.status === 'draft' ||
+    this.status === 'archived' ||
+    this.status === 'completed' ||
+    this.status === 'closed'
+  ) {
     return false;
   }
   const now = new Date();
@@ -170,19 +194,55 @@ EventSchema.methods.isRegistrationOpen = function (): boolean {
   if (this.registrationDeadline && now > this.registrationDeadline) {
     return false;
   }
+  if (this.maxParticipants !== null && this.maxParticipants !== undefined && this.registeredCount >= this.maxParticipants) {
+    return false;
+  }
   return true;
+};
+
+/**
+ * Computes public display state dynamically based on lifecycle rules.
+ */
+EventSchema.methods.getComputedStatus = function (): string {
+  if (this.isDeleted || this.isArchived || this.status === 'archived') {
+    return 'archived';
+  }
+  if (!this.isPublished || this.status === 'draft') {
+    return 'draft';
+  }
+  if (this.status === 'completed') {
+    return 'completed';
+  }
+  const now = new Date();
+  if (this.eventDate && this.eventDate < now) {
+    return 'completed';
+  }
+  if (this.maxParticipants !== null && this.maxParticipants !== undefined && this.registeredCount >= this.maxParticipants) {
+    return 'full';
+  }
+  if (this.regCloseDate && now > this.regCloseDate) {
+    return 'closed';
+  }
+  if (this.registrationDeadline && now > this.registrationDeadline) {
+    return 'closed';
+  }
+  if (this.regOpenDate && now < this.regOpenDate) {
+    return 'upcoming';
+  }
+  return this.status === 'closed' ? 'closed' : 'open';
 };
 
 /**
  * Validates whether additional registrations can be accepted against capacity limits.
  */
 EventSchema.methods.canAcceptRegistrations = function (
-  currentCount: number
+  currentCount?: number
 ): { allowed: boolean; reason?: string } {
   if (!this.isRegistrationOpen()) {
     return { allowed: false, reason: 'Registration is not currently open for this event' };
   }
-  if (this.maxParticipants !== null && this.maxParticipants !== undefined && currentCount >= this.maxParticipants) {
+  const count = currentCount !== undefined ? currentCount : this.registeredCount;
+  if (this.maxParticipants !== null && this.maxParticipants !== undefined && count >= this.maxParticipants) {
     return { allowed: false, reason: 'Event has reached its maximum participant capacity' };
   }
   return { allowed: true };

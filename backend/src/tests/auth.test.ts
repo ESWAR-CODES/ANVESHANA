@@ -106,6 +106,23 @@ describe('Admin Authentication & Security Middleware', () => {
       expect(res.body.success).toBe(false);
       expect(res.body.error).toContain('Forbidden');
     });
+
+    it('returns 503 Service Unavailable when database is offline in non-test runtime', async () => {
+      const prevEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = 'production';
+        const token = signToken(sampleAdmin);
+        const res = await request(app)
+          .get('/api/v1/admin/test-protected')
+          .set('Cookie', [`${AUTH_COOKIE_NAME}=${token}`]);
+
+        expect(res.status).toBe(503);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error).toContain('Database connection unavailable');
+      } finally {
+        process.env.NODE_ENV = prevEnv;
+      }
+    });
   });
 
   describe('Login & Logout Handlers', () => {
