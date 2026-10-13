@@ -9,6 +9,11 @@ import {
   deleteAdminEvent,
   updateEventFormSchema,
 } from '../controllers/eventController';
+import {
+  getEventRegistrations,
+  getRegistrationDetails,
+  exportEventRegistrations,
+} from '../controllers/participantController';
 import { requireAdmin } from '../middlewares/auth';
 import { handleBannerUpload } from '../middlewares/upload';
 
@@ -25,5 +30,10 @@ router.put('/:id/form', updateEventFormSchema);
 router.patch('/:id/publish', togglePublishEvent);
 router.patch('/:id/archive', archiveAdminEvent);
 router.delete('/:id', deleteAdminEvent);
+
+// Participant Management & Secure Export Endpoints
+router.get('/:id/registrations', getEventRegistrations);
+router.get('/:id/registrations/:registrationId', getRegistrationDetails);
+router.get('/:id/export', exportEventRegistrations);
 
 export default router;

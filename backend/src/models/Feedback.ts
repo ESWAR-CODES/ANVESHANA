@@ -3,6 +3,23 @@ import { IFeedback } from '../types/models';
 
 const FeedbackSchema = new Schema<IFeedback>(
   {
+    name: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: null,
+    },
+    category: {
+      type: String,
+      enum: ['general', 'event', 'website', 'other'],
+      default: 'general',
+      required: true,
+    },
     rating: {
       type: Number,
       required: [true, 'Rating is required'],
@@ -11,8 +28,9 @@ const FeedbackSchema = new Schema<IFeedback>(
     },
     feedbackText: {
       type: String,
+      required: [true, 'Feedback text is required'],
+      minlength: [5, 'Feedback text must be at least 5 characters'],
       maxlength: [1000, 'Feedback text cannot exceed 1000 characters'],
-      default: null,
       trim: true,
     },
     status: {
@@ -26,6 +44,21 @@ const FeedbackSchema = new Schema<IFeedback>(
       required: [true, 'IP hash is required for spam protection'],
       trim: true,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      required: true,
+      index: true,
+    },
+    moderatedAt: {
+      type: Date,
+      default: null,
+    },
+    moderatedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'Administrator',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -33,6 +66,7 @@ const FeedbackSchema = new Schema<IFeedback>(
 );
 
 FeedbackSchema.index({ createdAt: -1 });
+FeedbackSchema.index({ status: 1, isDeleted: 1, createdAt: -1 });
 FeedbackSchema.index({ ipHash: 1, createdAt: -1 });
 
 export const Feedback = model<IFeedback>('Feedback', FeedbackSchema);

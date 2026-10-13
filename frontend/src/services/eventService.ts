@@ -90,4 +90,45 @@ export const eventService = {
     const res = await apiClient.put(`/api/v1/admin/events/${id}/form`, { formSchema });
     return res.data;
   },
+
+  // Participant Management & Secure Exports
+  getEventRegistrations: async (
+    id: string,
+    params?: { page?: number; limit?: number; search?: string; formVersion?: number }
+  ): Promise<{
+    success: boolean;
+    data: {
+      registrations: any[];
+      pagination: { total: number; page: number; limit: number; totalPages: number };
+      formVersions: number[];
+      eventTitle: string;
+    };
+    error: string | null;
+  }> => {
+    const res = await apiClient.get(`/api/v1/admin/events/${id}/registrations`, { params });
+    return res.data;
+  },
+
+  getRegistrationDetails: async (
+    id: string,
+    registrationId: string
+  ): Promise<{
+    success: boolean;
+    data: any;
+    error: string | null;
+  }> => {
+    const res = await apiClient.get(`/api/v1/admin/events/${id}/registrations/${registrationId}`);
+    return res.data;
+  },
+
+  exportEventRegistrations: async (
+    id: string,
+    format: 'csv' | 'xlsx'
+  ): Promise<Blob> => {
+    const res = await apiClient.get(`/api/v1/admin/events/${id}/export`, {
+      params: { format },
+      responseType: 'blob',
+    });
+    return res.data;
+  },
 };

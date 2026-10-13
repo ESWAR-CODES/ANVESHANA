@@ -7,6 +7,8 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { EventModal } from '../../components/admin/EventModal';
 import { FormBuilderModal } from '../../components/admin/FormBuilderModal';
+import { ParticipantModal } from '../../components/admin/ParticipantModal';
+import { FeedbackModerationSection } from '../../components/admin/FeedbackModerationSection';
 
 export const AdminDashboard: React.FC = () => {
   const { admin, logout } = useAuth();
@@ -28,6 +30,10 @@ export const AdminDashboard: React.FC = () => {
   // Form Builder modal state
   const [formBuilderEvent, setFormBuilderEvent] = useState<ClubEvent | null>(null);
   const [isFormBuilderOpen, setIsFormBuilderOpen] = useState(false);
+
+  // Participant Management modal state
+  const [participantEvent, setParticipantEvent] = useState<ClubEvent | null>(null);
+  const [isParticipantModalOpen, setIsParticipantModalOpen] = useState(false);
 
   // Delete confirmation modal state
   const [deleteTarget, setDeleteTarget] = useState<ClubEvent | null>(null);
@@ -77,6 +83,11 @@ export const AdminDashboard: React.FC = () => {
   const handleOpenFormBuilder = (event: ClubEvent) => {
     setFormBuilderEvent(event);
     setIsFormBuilderOpen(true);
+  };
+
+  const handleOpenParticipants = (event: ClubEvent) => {
+    setParticipantEvent(event);
+    setIsParticipantModalOpen(true);
   };
 
   const handleTogglePublish = async (event: ClubEvent) => {
@@ -275,161 +286,213 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* 4 Colored Metric Cards (per Overview reference image) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-xs">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Total Events</p>
-              <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{totalEvents}</p>
-            </div>
+          {/* Events Management Tab */}
+          {activeTab === 'events' && (
+            <>
+              {/* 4 Colored Metric Cards (per Overview reference image) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-blue-100 shadow-xs">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Total Events</p>
+                  <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{totalEvents}</p>
+                </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-xs">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">Upcoming Events</p>
-              <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{upcomingCount}</p>
-            </div>
+                <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-xs">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600">Upcoming Events</p>
+                  <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{upcomingCount}</p>
+                </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-purple-100 shadow-xs">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-600">Past Events</p>
-              <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{pastCount}</p>
-            </div>
+                <div className="bg-white p-5 rounded-2xl border border-purple-100 shadow-xs">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-purple-600">Past Events</p>
+                  <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{pastCount}</p>
+                </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-xs">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">Drafts / Private</p>
-              <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{draftsCount}</p>
-            </div>
-          </div>
-
-          {/* Events Data Table Section */}
-          <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-4">
-              <div>
-                <h2 className="font-serif text-lg font-bold text-[#0B132B]">
-                  All Events & Workshops
-                </h2>
-                <p className="text-xs text-gray-500">
-                  Manage publication lifecycle, dates, and banner visuals.
-                </p>
+                <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-xs">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">Drafts / Private</p>
+                  <p className="text-3xl font-serif font-bold text-[#0B132B] mt-1">{draftsCount}</p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={fetchEvents}>
-                  ↻ Refresh
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleOpenCreateModal}>
-                  + Add Event
-                </Button>
-              </div>
-            </div>
+              {/* Events Data Table Section */}
+              <div className="bg-white rounded-2xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h2 className="font-serif text-lg font-bold text-[#0B132B]">
+                      All Events & Workshops
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Manage publication lifecycle, dates, and banner visuals.
+                    </p>
+                  </div>
 
-            {/* Table Area */}
-            {isLoading ? (
-              <div className="p-12 text-center text-xs text-gray-400">
-                Loading events from server...
-              </div>
-            ) : events.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <p className="font-serif text-base font-semibold text-gray-700">No events found in database</p>
-                <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                  Click "+ Create New Event" to publish your first club event or workshop.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-[#F3F4F6] text-gray-600 font-semibold border-b border-gray-200">
-                      <th className="py-3.5 px-6">Event Title</th>
-                      <th className="py-3.5 px-4">Category</th>
-                      <th className="py-3.5 px-4">Date</th>
-                      <th className="py-3.5 px-4">Status</th>
-                      <th className="py-3.5 px-4">Registrations</th>
-                      <th className="py-3.5 px-6 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {events.map((event) => (
-                      <tr key={event._id} className="hover:bg-gray-50/70 transition-colors">
-                        <td className="py-4 px-6 font-medium text-gray-900">
-                          <div className="flex items-center gap-3">
-                            {event.bannerMedia?.url ? (
-                              <img
-                                src={event.bannerMedia.url}
-                                alt=""
-                                className="w-10 h-8 rounded object-cover border border-gray-200 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-8 rounded bg-gray-200 text-gray-500 font-serif font-bold text-xs flex items-center justify-center shrink-0">
-                                A
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={fetchEvents}>
+                      ↻ Refresh
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={handleOpenCreateModal}>
+                      + Add Event
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Table Area */}
+                {isLoading ? (
+                  <div className="p-12 text-center text-xs text-gray-400">
+                    Loading events from server...
+                  </div>
+                ) : events.length === 0 ? (
+                  <div className="p-12 text-center space-y-3">
+                    <p className="font-serif text-base font-semibold text-gray-700">No events found in database</p>
+                    <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                      Click "+ Create New Event" to publish your first club event or workshop.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-[#F3F4F6] text-gray-600 font-semibold border-b border-gray-200">
+                          <th className="py-3.5 px-6">Event Title</th>
+                          <th className="py-3.5 px-4">Category</th>
+                          <th className="py-3.5 px-4">Date</th>
+                          <th className="py-3.5 px-4">Status</th>
+                          <th className="py-3.5 px-4">Registrations</th>
+                          <th className="py-3.5 px-6 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {events.map((event) => (
+                          <tr key={event._id} className="hover:bg-gray-50/70 transition-colors">
+                            <td className="py-4 px-6 font-medium text-gray-900">
+                              <div className="flex items-center gap-3">
+                                {event.bannerMedia?.url ? (
+                                  <img
+                                    src={event.bannerMedia.url}
+                                    alt=""
+                                    className="w-10 h-8 rounded object-cover border border-gray-200 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-8 rounded bg-gray-200 text-gray-500 font-serif font-bold text-xs flex items-center justify-center shrink-0">
+                                    A
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="font-semibold text-[#0B132B] truncate max-w-xs">{event.title}</p>
+                                  <p className="text-[11px] text-gray-400 truncate max-w-xs">{event.venue}</p>
+                                </div>
                               </div>
-                            )}
-                            <div>
-                              <p className="font-semibold text-[#0B132B] truncate max-w-xs">{event.title}</p>
-                              <p className="text-[11px] text-gray-400 truncate max-w-xs">{event.venue}</p>
-                            </div>
-                          </div>
-                        </td>
+                            </td>
 
-                        <td className="py-4 px-4 text-gray-600">
-                          <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[11px] font-medium">
-                            {event.category || 'General'}
-                          </span>
-                        </td>
+                            <td className="py-4 px-4 text-gray-600">
+                              <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[11px] font-medium">
+                                {event.category || 'General'}
+                              </span>
+                            </td>
 
-                        <td className="py-4 px-4 text-gray-600">
-                          {formatDate(event.eventDate)}
-                        </td>
+                            <td className="py-4 px-4 text-gray-600">
+                              {formatDate(event.eventDate)}
+                            </td>
 
-                        <td className="py-4 px-4">
-                          <StatusBadge status={event.isPublished ? 'open' : 'archived'} />
-                        </td>
+                            <td className="py-4 px-4">
+                              <StatusBadge status={event.isPublished ? 'open' : 'archived'} />
+                            </td>
 
-                        <td className="py-4 px-4 text-gray-600 font-mono">
-                          {event.registeredCount || 0}
-                          {event.maxParticipants ? ` / ${event.maxParticipants}` : ''}
-                        </td>
+                            <td className="py-4 px-4 text-gray-600 font-mono">
+                              {event.registeredCount || 0}
+                              {event.maxParticipants ? ` / ${event.maxParticipants}` : ''}
+                            </td>
 
-                        <td className="py-4 px-6 text-right space-x-2">
-                          <button
-                            onClick={() => handleOpenFormBuilder(event)}
-                            className="px-2.5 py-1 bg-[#0B132B] hover:bg-[#F5A623] hover:text-[#0B132B] text-white rounded text-xs font-semibold transition-colors cursor-pointer"
-                          >
-                            Form Builder
-                          </button>
+                            <td className="py-4 px-6 text-right space-x-2">
+                              <button
+                                onClick={() => handleOpenParticipants(event)}
+                                className="px-2.5 py-1 bg-[#F5A623] hover:bg-[#d98f16] text-[#0B132B] rounded text-xs font-semibold transition-colors cursor-pointer"
+                              >
+                                Participants ({event.registeredCount || 0})
+                              </button>
 
-                          <button
-                            onClick={() => handleOpenEditModal(event)}
-                            className="px-2.5 py-1 bg-gray-100 hover:bg-[#F5A623] hover:text-[#0B132B] rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                          >
-                            Edit
-                          </button>
+                              <button
+                                onClick={() => handleOpenFormBuilder(event)}
+                                className="px-2.5 py-1 bg-[#0B132B] hover:bg-[#F5A623] hover:text-[#0B132B] text-white rounded text-xs font-semibold transition-colors cursor-pointer"
+                              >
+                                Form Builder
+                              </button>
 
-                          <button
-                            onClick={() => handleTogglePublish(event)}
-                            className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                          >
-                            {event.isPublished ? 'Unpublish' : 'Publish'}
-                          </button>
+                              <button
+                                onClick={() => handleOpenEditModal(event)}
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-[#F5A623] hover:text-[#0B132B] rounded text-gray-700 font-medium transition-colors cursor-pointer"
+                              >
+                                Edit
+                              </button>
 
-                          <button
-                            onClick={() => handleArchive(event)}
-                            className="px-2.5 py-1 bg-gray-100 hover:bg-amber-100 hover:text-amber-800 rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                          >
-                            Archive
-                          </button>
+                              <button
+                                onClick={() => handleTogglePublish(event)}
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 font-medium transition-colors cursor-pointer"
+                              >
+                                {event.isPublished ? 'Unpublish' : 'Publish'}
+                              </button>
 
-                          <button
-                            onClick={() => setDeleteTarget(event)}
-                            className="px-2.5 py-1 bg-gray-100 hover:bg-red-100 hover:text-red-700 rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                              <button
+                                onClick={() => handleArchive(event)}
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-amber-100 hover:text-amber-800 rounded text-gray-700 font-medium transition-colors cursor-pointer"
+                              >
+                                Archive
+                              </button>
+
+                              <button
+                                onClick={() => setDeleteTarget(event)}
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-red-100 hover:text-red-700 rounded text-gray-700 font-medium transition-colors cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
+
+          {/* Feedback Moderation Tab */}
+          {activeTab === 'feedback' && <FeedbackModerationSection />}
+
+          {/* Placeholders for upcoming phases */}
+          {activeTab === 'gallery' && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-amber-50 text-[#F5A623] rounded-full mx-auto flex items-center justify-center font-bold text-lg">
+                🖼️
+              </div>
+              <h3 className="font-serif text-lg font-bold text-[#0B132B]">Event Gallery Management</h3>
+              <p className="text-xs text-gray-500 max-w-md mx-auto">
+                Event photo gallery curation with 5MB upload limit is scheduled for upcoming phases. You can currently manage event banners and details under Events.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'team' && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-full mx-auto flex items-center justify-center font-bold text-lg">
+                👥
+              </div>
+              <h3 className="font-serif text-lg font-bold text-[#0B132B]">Team Management</h3>
+              <p className="text-xs text-gray-500 max-w-md mx-auto">
+                Core team hierarchy and member management across the 7 seeded categories is scheduled for upcoming phases.
+              </p>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center space-y-3">
+              <div className="w-12 h-12 bg-gray-50 text-gray-600 rounded-full mx-auto flex items-center justify-center font-bold text-lg">
+                ⚙️
+              </div>
+              <h3 className="font-serif text-lg font-bold text-[#0B132B]">System Settings</h3>
+              <p className="text-xs text-gray-500 max-w-md mx-auto">
+                Admin configuration and credential policies are governed via environment variables.
+              </p>
+            </div>
+          )}
         </main>
       </div>
 
@@ -460,6 +523,19 @@ export const AdminDashboard: React.FC = () => {
             setActionNotice(`Form schema updated to Version ${newVersion} for "${formBuilderEvent.title}".`);
             fetchEvents();
           }}
+        />
+      )}
+
+      {/* Participant Management Modal */}
+      {participantEvent && (
+        <ParticipantModal
+          isOpen={isParticipantModalOpen}
+          onClose={() => {
+            setIsParticipantModalOpen(false);
+            setParticipantEvent(null);
+          }}
+          eventId={participantEvent._id}
+          eventTitle={participantEvent.title}
         />
       )}
 

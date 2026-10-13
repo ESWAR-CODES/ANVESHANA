@@ -166,10 +166,16 @@ export type FeedbackStatus = 'pending' | 'reviewed' | 'archived';
 
 export interface IFeedback extends Document {
   _id: Types.ObjectId;
+  name?: string | null;
+  email?: string | null;
+  category?: 'general' | 'event' | 'website' | 'other';
   rating: number;
   feedbackText?: string | null;
   status: FeedbackStatus;
   ipHash: string;
+  isDeleted: boolean;
+  moderatedAt?: Date | null;
+  moderatedBy?: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }

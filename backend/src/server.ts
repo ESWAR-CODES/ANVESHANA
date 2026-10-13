@@ -8,6 +8,8 @@ import { connectDB, getDbStatus } from './config/db';
 import authRoutes from './routes/authRoutes';
 import eventRoutes from './routes/eventRoutes';
 import adminEventRoutes from './routes/adminEventRoutes';
+import feedbackRoutes from './routes/feedbackRoutes';
+import adminFeedbackRoutes from './routes/adminFeedbackRoutes';
 import { requireAdmin } from './middlewares/auth';
 
 dotenv.config();
@@ -73,6 +75,10 @@ app.use('/api/v1/admin/auth', authRoutes);
 // Event Routes (Public & Admin)
 app.use('/api/v1/events', eventRoutes);
 app.use('/api/v1/admin/events', adminEventRoutes);
+
+// Feedback Routes (Public & Admin)
+app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
 
 // Protected Admin Verification Endpoint (used by tests and session checks)
 app.get('/api/v1/admin/test-protected', requireAdmin, (req: Request, res: Response) => {
