@@ -196,3 +196,47 @@ export const handleLogoUpload = (
   });
 };
 
+/* =========================================================================
+   5. Homepage Hero Background Image Upload (5 MB Limit)
+   ========================================================================= */
+export const uploadHeroBackground = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB limit for high-res hero backdrop
+  },
+  fileFilter,
+}).single('heroBackground');
+
+export const handleHeroBackgroundUpload = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  uploadHeroBackground(req, res, (err: any) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Hero background image file size exceeds the 5MB limit.',
+        });
+        return;
+      }
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: `Hero background upload error: ${err.message}`,
+      });
+      return;
+    } else if (err) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: err.message || 'Error uploading hero background image',
+      });
+      return;
+    }
+    next();
+  });
+};
+

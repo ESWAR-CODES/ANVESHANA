@@ -96,49 +96,43 @@ export const Navbar: React.FC = () => {
           {/* Brand Identity / Dual Logos */}
           <Link
             to="/"
-            className="flex items-center gap-2.5 sm:gap-3 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] rounded-lg p-1"
+            className="flex items-center gap-2 sm:gap-3 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] rounded-lg p-0.5 shrink-0"
             aria-label={`${clubName} Homepage`}
           >
-            {/* University Logo if present */}
-            {universityLogo?.url && !univLogoError ? (
+            {/* Crisp Dual-Logo Badge: Mohan Babu University + Anveshana Club */}
+            <div className="flex items-center gap-2 sm:gap-2.5 bg-white/95 px-2.5 py-1 rounded-lg shadow-xs border border-white/20 shrink-0">
+              {/* Mohan Babu University (MBU) Official Logo */}
               <img
-                src={universityLogo.url}
-                alt={universityLogo.alt || 'Mohan Babu University Logo'}
+                src={universityLogo?.url && !univLogoError ? universityLogo.url : '/assets/mbu-logo.png'}
+                alt={universityLogo?.alt || 'Mohan Babu University Logo'}
                 onError={() => setUnivLogoError(true)}
-                className="h-8 sm:h-9 w-auto max-w-[120px] object-contain rounded-sm"
+                className="h-6 sm:h-7 md:h-8 w-auto max-w-[85px] sm:max-w-[105px] object-contain shrink-0"
               />
-            ) : null}
 
-            {/* Subtle vertical separator if university logo is shown */}
-            {universityLogo?.url && !univLogoError && (
-              <span className="hidden sm:inline-block w-px h-6 bg-white/20" />
-            )}
+              {/* Subtle vertical separator */}
+              <span className="w-px h-4 sm:h-5 bg-gray-300 shrink-0" />
 
-            {/* Club Logo if present, otherwise stylized crest */}
-            {clubLogo?.url && !clubLogoError ? (
+              {/* Anveshana Club Official Logo */}
               <img
-                src={clubLogo.url}
-                alt={clubLogo.alt || 'Anveshana Club Logo'}
+                src={clubLogo?.url && !clubLogoError ? clubLogo.url : '/assets/anveshana-logo.png'}
+                alt={clubLogo?.alt || 'Anveshana Club Logo'}
                 onError={() => setClubLogoError(true)}
-                className="h-8 sm:h-9 w-auto max-w-[120px] object-contain rounded-sm"
+                className="h-5 sm:h-6 md:h-7 w-auto max-w-[95px] sm:max-w-[120px] object-contain shrink-0"
               />
-            ) : (
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1C2541] border border-[#F5A623]/40 text-[#F5A623] flex items-center justify-center font-serif font-bold text-base sm:text-lg shadow-inner group-hover:border-[#F5A623] transition-colors">
-                A
-              </div>
-            )}
+            </div>
 
-            <div className="flex flex-col">
-              <span className="font-serif text-base sm:text-lg font-bold tracking-wide text-[#F8FAFC] group-hover:text-[#F5A623] transition-colors leading-tight">
+            {/* Club Identity Text (Hidden on small mobile to prevent wrapping) */}
+            <div className="hidden lg:flex flex-col text-left">
+              <span className="font-serif text-sm font-bold tracking-wide text-[#F8FAFC] group-hover:text-[#F5A623] transition-colors leading-tight">
                 {clubName}
               </span>
-              <span className="text-[9px] sm:text-[10px] tracking-widest uppercase text-gray-300">
+              <span className="text-[9px] tracking-widest uppercase text-gray-300">
                 {universityName}
               </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
+          {/* Desktop Navigation Links & Actions */}
           <div className="hidden md:flex items-center gap-1 lg:gap-2">
             {navLinks.map((link) => (
               <NavLink
@@ -146,7 +140,7 @@ export const Navbar: React.FC = () => {
                 to={link.path}
                 end={link.path === '/'}
                 className={({ isActive }) =>
-                  `px-3.5 py-1.5 rounded-lg text-sm font-medium tracking-wide transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] ${
+                  `px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium tracking-wide transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] ${
                     isActive
                       ? 'text-[#F5A623] bg-[#1C2541]/70 font-semibold shadow-xs'
                       : 'text-gray-200 hover:text-white hover:bg-white/10'
@@ -157,10 +151,22 @@ export const Navbar: React.FC = () => {
               </NavLink>
             ))}
 
+            {/* Header Search Control linking to Event Catalog */}
+            <Link
+              to="/events"
+              className="p-2 text-gray-300 hover:text-[#F5A623] hover:bg-white/5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623]"
+              aria-label="Search events catalog"
+              title="Search events"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </Link>
+
             {/* Quick Action Button */}
             <Link
               to={ctaLink}
-              className="ml-3 px-4 py-2 bg-[#F5A623] hover:bg-[#e0961b] active:bg-[#cc8715] text-[#0B132B] font-semibold text-xs tracking-wider uppercase rounded-lg shadow-sm transition-all hover:shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623]"
+              className="ml-2 px-3.5 py-1.5 bg-[#F5A623] hover:bg-[#e0961b] active:bg-[#cc8715] text-[#0B132B] font-semibold text-xs tracking-wider uppercase rounded-lg shadow-sm transition-all hover:shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623]"
             >
               {ctaText}
             </Link>

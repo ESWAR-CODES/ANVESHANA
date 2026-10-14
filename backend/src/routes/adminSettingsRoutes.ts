@@ -6,9 +6,11 @@ import {
   uploadUniversityLogo,
   deleteClubLogo,
   deleteUniversityLogo,
+  uploadHeroBackground,
+  deleteHeroBackground,
 } from '../controllers/settingsController';
 import { requireAdmin } from '../middlewares/auth';
-import { handleLogoUpload } from '../middlewares/upload';
+import { handleLogoUpload, handleHeroBackgroundUpload } from '../middlewares/upload';
 
 const router = Router();
 
@@ -23,5 +25,9 @@ router.post('/logo/club', handleLogoUpload, uploadClubLogo);
 router.post('/logo/university', handleLogoUpload, uploadUniversityLogo);
 router.delete('/logo/club', deleteClubLogo);
 router.delete('/logo/university', deleteUniversityLogo);
+
+// Homepage Hero Background Routes
+router.post('/hero/background', handleHeroBackgroundUpload, uploadHeroBackground);
+router.delete('/hero/background', deleteHeroBackground);
 
 export default router;

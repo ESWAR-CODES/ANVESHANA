@@ -193,4 +193,54 @@ describe('Comprehensive Bug Fixes & Feature Enhancements Tests', () => {
       expect(gallery.images[0].altText).toBe('Students receiving gold trophy on stage');
     });
   });
+
+  /* =========================================================================
+     6. HOMEPAGE HERO BACKGROUND MANAGEMENT & SETTINGS
+     ========================================================================= */
+  describe('Homepage Hero Background Endpoints', () => {
+    it('rejects unauthenticated requests to POST /api/v1/admin/settings/hero/background with 401', async () => {
+      const res = await request(app).post('/api/v1/admin/settings/hero/background');
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rejects student role on POST /api/v1/admin/settings/hero/background with 403', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/settings/hero/background')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${studentToken}`]);
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns 400 when no file is provided for hero background upload', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/settings/hero/background')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`]);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('No hero background image file');
+    });
+
+    it('rejects unauthenticated requests to DELETE /api/v1/admin/settings/hero/background with 401', async () => {
+      const res = await request(app).delete('/api/v1/admin/settings/hero/background');
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rejects student role on DELETE /api/v1/admin/settings/hero/background with 403', async () => {
+      const res = await request(app)
+        .delete('/api/v1/admin/settings/hero/background')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${studentToken}`]);
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('public settings GET /api/v1/settings returns hero configuration without exposing internal secrets', async () => {
+      const res = await request(app).get('/api/v1/settings');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.hero).toBeDefined();
+      expect(res.body.data.hero.title).toBeDefined();
+      expect(res.body.data.adminPassword).toBeUndefined();
+    });
+  });
 });

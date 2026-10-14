@@ -358,18 +358,35 @@ export const updateAdminSettings = async (req: Request, res: Response): Promise<
       };
     }
 
-    // 5. Hero section
+    // 5. Hero section (uses dot-notation to preserve hero.backgroundImage)
     if (hero !== undefined && typeof hero === 'object' && hero !== null) {
-      updatePayload.hero = {
-        eyebrow: typeof hero.eyebrow === 'string' ? hero.eyebrow.trim() : DEFAULT_CLUB_SETTINGS.hero.eyebrow,
-        title: typeof hero.title === 'string' && hero.title.trim() ? hero.title.trim() : DEFAULT_CLUB_SETTINGS.hero.title,
-        tagline: typeof hero.tagline === 'string' ? hero.tagline.trim() : DEFAULT_CLUB_SETTINGS.hero.tagline,
-        description: typeof hero.description === 'string' ? hero.description.trim() : DEFAULT_CLUB_SETTINGS.hero.description,
-        primaryCtaText: typeof hero.primaryCtaText === 'string' ? hero.primaryCtaText.trim() : DEFAULT_CLUB_SETTINGS.hero.primaryCtaText,
-        primaryCtaLink: typeof hero.primaryCtaLink === 'string' ? hero.primaryCtaLink.trim() : DEFAULT_CLUB_SETTINGS.hero.primaryCtaLink,
-        secondaryCtaText: typeof hero.secondaryCtaText === 'string' ? hero.secondaryCtaText.trim() : DEFAULT_CLUB_SETTINGS.hero.secondaryCtaText,
-        secondaryCtaLink: typeof hero.secondaryCtaLink === 'string' ? hero.secondaryCtaLink.trim() : DEFAULT_CLUB_SETTINGS.hero.secondaryCtaLink,
-      };
+      if (hero.eyebrow !== undefined) {
+        updatePayload['hero.eyebrow'] = typeof hero.eyebrow === 'string' ? hero.eyebrow.trim() : DEFAULT_CLUB_SETTINGS.hero.eyebrow;
+      }
+      if (hero.title !== undefined) {
+        updatePayload['hero.title'] = typeof hero.title === 'string' && hero.title.trim() ? hero.title.trim() : DEFAULT_CLUB_SETTINGS.hero.title;
+      }
+      if (hero.tagline !== undefined) {
+        updatePayload['hero.tagline'] = typeof hero.tagline === 'string' ? hero.tagline.trim() : DEFAULT_CLUB_SETTINGS.hero.tagline;
+      }
+      if (hero.description !== undefined) {
+        updatePayload['hero.description'] = typeof hero.description === 'string' ? hero.description.trim() : DEFAULT_CLUB_SETTINGS.hero.description;
+      }
+      if (hero.primaryCtaText !== undefined) {
+        updatePayload['hero.primaryCtaText'] = typeof hero.primaryCtaText === 'string' ? hero.primaryCtaText.trim() : DEFAULT_CLUB_SETTINGS.hero.primaryCtaText;
+      }
+      if (hero.primaryCtaLink !== undefined) {
+        updatePayload['hero.primaryCtaLink'] = typeof hero.primaryCtaLink === 'string' ? hero.primaryCtaLink.trim() : DEFAULT_CLUB_SETTINGS.hero.primaryCtaLink;
+      }
+      if (hero.secondaryCtaText !== undefined) {
+        updatePayload['hero.secondaryCtaText'] = typeof hero.secondaryCtaText === 'string' ? hero.secondaryCtaText.trim() : DEFAULT_CLUB_SETTINGS.hero.secondaryCtaText;
+      }
+      if (hero.secondaryCtaLink !== undefined) {
+        updatePayload['hero.secondaryCtaLink'] = typeof hero.secondaryCtaLink === 'string' ? hero.secondaryCtaLink.trim() : DEFAULT_CLUB_SETTINGS.hero.secondaryCtaLink;
+      }
+      if (hero.backgroundImage !== undefined) {
+        updatePayload['hero.backgroundImage'] = hero.backgroundImage;
+      }
     }
 
     // 6. Stats section
@@ -746,6 +763,125 @@ export const deleteUniversityLogo = async (_req: Request, res: Response): Promis
       success: false,
       data: null,
       error: 'Failed to reset university logo.',
+    });
+  }
+};
+
+/**
+ * Admin: Upload Homepage Hero Background Image
+ * POST /api/v1/admin/settings/hero/background
+ */
+export const uploadHeroBackground = async (req: Request, res: Response): Promise<void> => {
+  if (!req.file) {
+    res.status(400).json({
+      success: false,
+      data: null,
+      error: 'No hero background image file was provided.',
+    });
+    return;
+  }
+
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const uploadResult = await uploadImageBuffer(req.file.buffer, 'anveshana/hero');
+
+    const existing = await ClubSettings.findOne({ isSingleton: true });
+    const oldPublicId = existing?.hero?.backgroundImage?.publicId;
+
+    const updated = await ClubSettings.findOneAndUpdate(
+      { isSingleton: true },
+      {
+        $set: {
+          'hero.backgroundImage': {
+            url: uploadResult.url,
+            publicId: uploadResult.publicId,
+          },
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    // Only delete old Cloudinary asset after successful upload and DB save
+    if (oldPublicId && oldPublicId !== uploadResult.publicId) {
+      await deleteCloudinaryImage(oldPublicId).catch(() => {});
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updated,
+      message: 'Homepage hero background image uploaded and activated successfully.',
+      error: null,
+    });
+  } catch (error: any) {
+    const errMsg = error?.message || 'Failed to upload hero background image.';
+    const isForbidden =
+      error?.http_code === 403 ||
+      errMsg.includes('403') ||
+      errMsg.includes('permissions') ||
+      errMsg.includes('forbidden');
+    const isUnauthorized = error?.http_code === 401 || errMsg.includes('401');
+
+    let userFriendlyError = errMsg;
+    if (isForbidden || isUnauthorized) {
+      userFriendlyError =
+        'Image upload rejected by Cloudinary: Missing read/write permissions or invalid API credentials.';
+    }
+
+    res.status(isForbidden || isUnauthorized ? 502 : 400).json({
+      success: false,
+      data: null,
+      error: userFriendlyError,
+    });
+  }
+};
+
+/**
+ * Admin: Delete / Reset Homepage Hero Background Image
+ * DELETE /api/v1/admin/settings/hero/background
+ */
+export const deleteHeroBackground = async (_req: Request, res: Response): Promise<void> => {
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const existing = await ClubSettings.findOne({ isSingleton: true });
+    if (existing?.hero?.backgroundImage?.publicId) {
+      await deleteCloudinaryImage(existing.hero.backgroundImage.publicId).catch(() => {});
+    }
+
+    const updated = await ClubSettings.findOneAndUpdate(
+      { isSingleton: true },
+      { $set: { 'hero.backgroundImage': null } },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: updated,
+      message: 'Homepage hero background reset to default.',
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to reset hero background image.',
     });
   }
 };

@@ -10,6 +10,7 @@ interface HeroProps {
 
 export const Hero: React.FC<HeroProps> = ({ settings: propSettings }) => {
   const [settings, setSettings] = useState<ClubSettings | null>(propSettings || null);
+  const [bgImageError, setBgImageError] = useState(false);
 
   useEffect(() => {
     if (propSettings) {
@@ -55,31 +56,47 @@ export const Hero: React.FC<HeroProps> = ({ settings: propSettings }) => {
 
   return (
     <section className="relative overflow-hidden bg-[#0B132B] text-white pt-28 pb-16 sm:pt-36 sm:pb-20 lg:pt-40 lg:pb-24">
-      {/* Cinematic Sunset Campus Backdrop (Gradient + Motifs) */}
+      {/* Hero Backdrop: Custom Admin Image OR Cinematic Sunset Gradient + Motifs */}
       <div className="absolute inset-0 z-0 pointer-events-none">
-        {/* Multilayered dusk / sunset gradient: deep navy to warm amber and dusk indigo */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0B132B] via-[#1C2541]/90 to-[#0B132B]" />
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-[#F5A623]/20 via-[#EF4444]/15 to-transparent blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-[#1C2541] via-[#F5A623]/10 to-transparent blur-2xl" />
+        {heroData?.backgroundImage?.url && !bgImageError ? (
+          <>
+            {/* Custom Admin Hero Background Image */}
+            <img
+              src={heroData.backgroundImage.url}
+              alt=""
+              onError={() => setBgImageError(true)}
+              className="w-full h-full object-cover object-center"
+            />
+            {/* Dark & warm contrast overlay ensuring all text, buttons, and stats are 100% legible */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0B132B]/85 via-[#0B132B]/75 to-[#0B132B]/95" />
+          </>
+        ) : (
+          <>
+            {/* Multilayered dusk / sunset gradient: deep navy to warm amber and dusk indigo */}
+            <div className="absolute inset-0 bg-gradient-to-b from-[#0B132B] via-[#1C2541]/90 to-[#0B132B]" />
+            <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-[#F5A623]/20 via-[#EF4444]/15 to-transparent blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 w-[500px] h-[500px] rounded-full bg-gradient-to-tr from-[#1C2541] via-[#F5A623]/10 to-transparent blur-2xl" />
 
-        {/* Subtle Architectural & Circuit Grid Line Motifs */}
-        <svg
-          className="absolute inset-0 w-full h-full opacity-10"
-          xmlns="http://www.w3.org/2000/svg"
-          width="100%"
-          height="100%"
-        >
-          <defs>
-            <pattern id="hero-grid" width="48" height="48" patternUnits="userSpaceOnUse">
-              <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#F5A623" strokeWidth="0.75" />
-              <circle cx="0" cy="0" r="1.5" fill="#F5A623" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#hero-grid)" />
-        </svg>
+            {/* Subtle Architectural & Circuit Grid Line Motifs */}
+            <svg
+              className="absolute inset-0 w-full h-full opacity-10"
+              xmlns="http://www.w3.org/2000/svg"
+              width="100%"
+              height="100%"
+            >
+              <defs>
+                <pattern id="hero-grid" width="48" height="48" patternUnits="userSpaceOnUse">
+                  <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#F5A623" strokeWidth="0.75" />
+                  <circle cx="0" cy="0" r="1.5" fill="#F5A623" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#hero-grid)" />
+            </svg>
 
-        {/* Ambient Dark Overlay to Guarantee Contrast */}
-        <div className="absolute inset-0 bg-[#0B132B]/60 backdrop-brightness-90" />
+            {/* Ambient Dark Overlay to Guarantee Contrast */}
+            <div className="absolute inset-0 bg-[#0B132B]/60 backdrop-brightness-90" />
+          </>
+        )}
       </div>
 
       {/* Hero Content Container with Clear, Independent Document Flow */}

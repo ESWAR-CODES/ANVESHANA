@@ -38,6 +38,16 @@ export const GalleryManagementSection: React.FC = () => {
     { position: '3rd Place', name: '', project: '' },
   ]);
   const [isSavingStory, setIsSavingStory] = useState(false);
+  const [storyFeedback, setStoryFeedback] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Auto-dismiss floating notification after 4.5s
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => {
+      setNotification(null);
+    }, 4500);
+    return () => clearTimeout(timer);
+  }, [notification]);
 
   // Load events for selection
   useEffect(() => {
@@ -202,6 +212,7 @@ export const GalleryManagementSection: React.FC = () => {
 
     setIsSavingStory(true);
     setNotification(null);
+    setStoryFeedback(null);
 
     const parsedHighlights = highlightsInput
       .split('\n')
@@ -222,16 +233,34 @@ export const GalleryManagementSection: React.FC = () => {
       });
 
       if (res.success) {
+        // Re-fetch persisted data from backend to guarantee synchronization with MongoDB
+        await fetchGallery(selectedEventId);
+
+        const successMsg = 'Changes saved successfully.';
         setNotification({
-          text: 'Event retrospective story saved and published successfully.',
+          text: successMsg,
+          type: 'success',
+        });
+        setStoryFeedback({
+          text: successMsg,
           type: 'success',
         });
       } else {
-        setNotification({ text: res.error || 'Failed to save story.', type: 'error' });
+        const errorMsg = res.error || 'Failed to save retrospective story and winners.';
+        setNotification({ text: errorMsg, type: 'error' });
+        setStoryFeedback({ text: errorMsg, type: 'error' });
       }
     } catch (err: any) {
+      const errorMsg =
+        err.response?.data?.error ||
+        err.message ||
+        'Failed to save event retrospective story. Please verify your connection.';
       setNotification({
-        text: err.response?.data?.error || 'Failed to save event story.',
+        text: errorMsg,
+        type: 'error',
+      });
+      setStoryFeedback({
+        text: errorMsg,
         type: 'error',
       });
     } finally {
@@ -647,18 +676,85 @@ export const GalleryManagementSection: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 flex items-center justify-end">
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                isLoading={isSavingStory}
-                disabled={isSavingStory}
-              >
-                Save Retrospective Story
-              </Button>
+            {/* Story Form Feedback & Submit Actions */}
+            <div className="pt-4 border-t border-gray-100 flex items-center justify-between flex-wrap gap-4">
+              <div className="flex-1 min-w-[240px]">
+                {storyFeedback && (
+                  <div
+                    role="alert"
+                    className={`p-3 rounded-xl text-xs flex items-center justify-between border-l-4 animate-fade-in ${
+                      storyFeedback.type === 'success'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-500'
+                        : 'bg-red-50 text-red-800 border-red-500'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm">
+                        {storyFeedback.type === 'success' ? '✓' : '✕'}
+                      </span>
+                      <span className="font-semibold">{storyFeedback.text}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStoryFeedback(null)}
+                      className="font-bold cursor-pointer text-gray-500 hover:text-gray-700 ml-3"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  isLoading={isSavingStory}
+                  disabled={isSavingStory}
+                >
+                  {isSavingStory ? 'Saving...' : 'Save Retrospective Story'}
+                </Button>
+              </div>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Floating Viewport Toast Notification (Always visible regardless of scroll position) */}
+      {notification && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 max-w-md shadow-2xl rounded-2xl overflow-hidden animate-fade-in border border-white/10"
+        >
+          <div
+            className={`p-4 text-xs flex items-center gap-3 ${
+              notification.type === 'success'
+                ? 'bg-[#0B132B] text-white border-l-4 border-emerald-500'
+                : 'bg-[#0B132B] text-white border-l-4 border-red-500'
+            }`}
+          >
+            <span
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                notification.type === 'success'
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-red-500 text-white'
+              }`}
+            >
+              {notification.type === 'success' ? '✓' : '!'}
+            </span>
+            <div className="flex-1 pr-2">
+              <p className="font-semibold">{notification.text}</p>
+            </div>
+            <button
+              onClick={() => setNotification(null)}
+              className="text-gray-400 hover:text-white font-bold cursor-pointer text-sm"
+              aria-label="Dismiss notification"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
     </div>

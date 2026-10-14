@@ -365,15 +365,16 @@ export const EventDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Retrospective Event Story & Gallery (Rendered when event story or photos exist) */}
+      {/* Retrospective Event Gallery & Retrospective Story (Rendered when photos, story or winners exist) */}
       {(galleryImages.length > 0 || galleryStory?.shortSummary || galleryStory?.fullStory || (galleryStory?.winners && galleryStory.winners.length > 0)) && (
-        <section className="mt-16 pt-12 border-t border-[#E2E8F0] space-y-10">
+        <section className="mt-16 pt-12 border-t border-[#E2E8F0] space-y-12">
+          {/* Main Retrospective Header */}
           <div className="border-b border-gray-100 pb-6">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#F5A623] bg-[#0B132B] px-3 py-1 rounded-full shadow-inner">
-              Event Retrospective
+              Event Gallery &amp; Retrospective
             </span>
             <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#0B132B] mt-3">
-              {galleryStory?.title || `${event.title} Retrospective & Highlights`}
+              {galleryStory?.title || `${event.title} Gallery & Retrospective`}
             </h2>
             {galleryStory?.eventDate && (
               <p className="text-xs text-[#F5A623] font-semibold mt-1">
@@ -381,117 +382,37 @@ export const EventDetailPage: React.FC = () => {
               </p>
             )}
             {galleryStory?.shortSummary && (
-              <p className="text-sm text-gray-700 font-medium bg-[#FDFBF7] p-4 rounded-xl border border-[#E2E8F0] mt-4 leading-relaxed">
+              <p className="text-sm text-gray-700 font-medium bg-[#FDFBF7] p-4 rounded-xl border border-[#E2E8F0] mt-4 leading-relaxed max-w-4xl">
                 {galleryStory.shortSummary}
               </p>
             )}
           </div>
 
-          {/* Full Story Narrative if present */}
-          {galleryStory?.fullStory && (
-            <div className="space-y-3">
-              <h3 className="font-serif text-xl font-bold text-[#0B132B]">
-                The Story Behind the Event
-              </h3>
-              <div className="text-xs sm:text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-white p-6 rounded-2xl border border-gray-100 shadow-xs">
-                {galleryStory.fullStory}
-              </div>
-            </div>
-          )}
-
-          {/* Challenges & Key Highlights Grid */}
-          {(galleryStory?.challenges || (galleryStory?.highlights && galleryStory.highlights.length > 0)) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {galleryStory.challenges && (
-                <div className="bg-[#FDFBF7] p-6 rounded-2xl border border-[#E2E8F0] space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-amber-500 font-bold">⚡</span>
-                    <h4 className="font-serif text-base font-bold text-[#0B132B]">
-                      Challenges Tackled
-                    </h4>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">
-                    {galleryStory.challenges}
-                  </p>
-                </div>
-              )}
-
-              {galleryStory.highlights && galleryStory.highlights.length > 0 && (
-                <div className="bg-[#0B132B] text-white p-6 rounded-2xl border border-[#F5A623]/20 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#F5A623] font-bold">★</span>
-                    <h4 className="font-serif text-base font-bold text-white">
-                      Key Highlights &amp; Milestones
-                    </h4>
-                  </div>
-                  <ul className="space-y-2 text-xs text-gray-300">
-                    {galleryStory.highlights.map((h, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-[#F5A623] font-bold shrink-0">✓</span>
-                        <span>{h}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Winners & Standout Projects Podium */}
-          {galleryStory?.winners && galleryStory.winners.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[#F5A623] text-lg">🏆</span>
-                <h3 className="font-serif text-xl font-bold text-[#0B132B]">
-                  Winners &amp; Standout Projects
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {galleryStory.winners.map((winner, idx) => (
-                  <div
-                    key={idx}
-                    className="p-5 rounded-xl border border-gray-200 bg-white shadow-xs space-y-1 hover:border-[#F5A623] transition-colors"
-                  >
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-[#d98f16] border border-amber-200">
-                      {winner.position}
-                    </span>
-                    <h5 className="font-serif font-bold text-base text-[#0B132B] pt-1">
-                      {winner.name}
-                    </h5>
-                    {winner.project && (
-                      <p className="text-xs text-gray-600 italic">
-                        "{winner.project}"
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Retrospective Photography Grid */}
+          {/* =========================================================================
+             FIRST: EVENT GALLERY (Photos Grid displayed near top)
+             ========================================================================= */}
           {galleryImages.length > 0 && (
-            <div className="space-y-4 pt-4">
-              <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h3 className="font-serif text-xl font-bold text-[#0B132B]">
-                    Retrospective Photography
+                  <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#0B132B]">
+                    Event Photo Gallery
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Moments and presentations captured during {event.title}.
+                    Explore high-resolution highlights and student activities from {event.title}. Click any image to view in full resolution.
                   </p>
                 </div>
-                <span className="text-xs font-mono text-gray-400">
-                  {galleryImages.length} {galleryImages.length === 1 ? 'photo' : 'photos'}
+                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                  {galleryImages.length} {galleryImages.length === 1 ? 'Photograph' : 'Photographs'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
                 {galleryImages.map((img, idx) => (
                   <div
                     key={img.publicId || idx}
                     onClick={() => setPreviewImage(img)}
-                    className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-md transition-all"
+                    className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-lg transition-all transform hover:-translate-y-0.5"
                   >
                     <img
                       src={img.url}
@@ -499,14 +420,122 @@ export const EventDetailPage: React.FC = () => {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       loading="lazy"
                     />
-                    {img.caption && (
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-6 text-white text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p className="truncate font-medium">{img.caption}</p>
-                      </div>
-                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end text-white">
+                      {img.caption && (
+                        <p className="text-xs font-medium leading-tight truncate">{img.caption}</p>
+                      )}
+                      {img.altText && (
+                        <p className="text-[10px] text-gray-300 truncate mt-0.5">{img.altText}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+             SECOND: EVENT DESCRIPTIONS & IMAGE DETAILS
+             ========================================================================= */}
+          {(galleryStory?.challenges || (galleryStory?.highlights && galleryStory.highlights.length > 0)) && (
+            <div className="space-y-4 pt-2">
+              <div className="border-b border-gray-100 pb-2">
+                <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#0B132B]">
+                  Event Highlights &amp; Insights
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Key outcomes, milestones, and technical challenges tackled during the event.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {galleryStory.challenges && (
+                  <div className="bg-[#FDFBF7] p-6 rounded-2xl border border-[#E2E8F0] space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500 font-bold">⚡</span>
+                      <h4 className="font-serif text-base font-bold text-[#0B132B]">
+                        Challenges Tackled
+                      </h4>
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-600 leading-relaxed whitespace-pre-line">
+                      {galleryStory.challenges}
+                    </p>
+                  </div>
+                )}
+
+                {galleryStory.highlights && galleryStory.highlights.length > 0 && (
+                  <div className="bg-[#0B132B] text-white p-6 rounded-2xl border border-[#F5A623]/20 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#F5A623] font-bold">★</span>
+                      <h4 className="font-serif text-base font-bold text-white">
+                        Key Milestones &amp; Takeaways
+                      </h4>
+                    </div>
+                    <ul className="space-y-2.5 text-xs sm:text-sm text-gray-300">
+                      {galleryStory.highlights.map((h, i) => (
+                        <li key={i} className="flex items-start gap-2.5">
+                          <span className="text-[#F5A623] font-bold shrink-0 mt-0.5">✓</span>
+                          <span>{h}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================================
+             THIRD: REPOSITORY STORY AND WINNERS
+             ========================================================================= */}
+          {(galleryStory?.fullStory || (galleryStory?.winners && galleryStory.winners.length > 0)) && (
+            <div className="space-y-8 pt-4 border-t border-gray-100">
+              {/* Full Narrative Story */}
+              {galleryStory?.fullStory && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#F5A623] font-serif text-lg">📖</span>
+                    <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#0B132B]">
+                      The Retrospective Story Behind the Event
+                    </h3>
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-700 leading-relaxed whitespace-pre-line bg-white p-6 sm:p-8 rounded-2xl border border-gray-200 shadow-xs max-w-4xl">
+                    {galleryStory.fullStory}
+                  </div>
+                </div>
+              )}
+
+              {/* Winners & Recognition Podium */}
+              {galleryStory?.winners && galleryStory.winners.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#F5A623] text-xl">🏆</span>
+                    <h3 className="font-serif text-xl sm:text-2xl font-bold text-[#0B132B]">
+                      Winners &amp; Standout Projects
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {galleryStory.winners.map((winner, idx) => (
+                      <div
+                        key={idx}
+                        className="p-5 rounded-2xl border border-gray-200 bg-white shadow-xs space-y-1.5 hover:border-[#F5A623] hover:shadow-md transition-all"
+                      >
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-[#d98f16] border border-amber-200">
+                          {winner.position}
+                        </span>
+                        <h5 className="font-serif font-bold text-base text-[#0B132B] pt-1">
+                          {winner.name}
+                        </h5>
+                        {winner.project && (
+                          <p className="text-xs text-gray-600 italic">
+                            "{winner.project}"
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>

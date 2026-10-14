@@ -114,6 +114,12 @@ export const WebsiteContentSection: React.FC = () => {
   const clubFileInputRef = useRef<HTMLInputElement>(null);
   const univFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Hero Background Upload States
+  const [heroBgFile, setHeroBgFile] = useState<File | null>(null);
+  const [heroBgPreview, setHeroBgPreview] = useState<string | null>(null);
+  const [isUploadingHeroBg, setIsUploadingHeroBg] = useState(false);
+  const heroFileInputRef = useRef<HTMLInputElement>(null);
+
   const populateForm = (data: ClubSettings) => {
     setSettings(data);
     setClubName(data.clubName || '');
@@ -567,6 +573,76 @@ export const WebsiteContentSection: React.FC = () => {
     }
   };
 
+  const handleHeroBgSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setFeedbackMessage({ type: 'error', text: 'Only JPEG, PNG, and WebP images are allowed for the hero background.' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFeedbackMessage({ type: 'error', text: 'Hero background image must be under 5MB.' });
+      return;
+    }
+
+    setHeroBgFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setHeroBgPreview(previewUrl);
+    setFeedbackMessage(null);
+  };
+
+  const handleUploadHeroBg = async () => {
+    if (!heroBgFile) return;
+    setIsUploadingHeroBg(true);
+    setFeedbackMessage(null);
+
+    try {
+      const res = await settingsService.uploadHeroBackground(heroBgFile);
+      if (res.success && res.data) {
+        populateForm(res.data);
+        setHeroBgFile(null);
+        setHeroBgPreview(null);
+        setFeedbackMessage({ type: 'success', text: 'Homepage hero background uploaded and activated successfully.' });
+      } else {
+        setFeedbackMessage({ type: 'error', text: res.error || 'Failed to upload hero background image.' });
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ type: 'error', text: err.response?.data?.error || 'Error uploading hero background image to Cloudinary.' });
+    } finally {
+      setIsUploadingHeroBg(false);
+    }
+  };
+
+  const handleDeleteHeroBg = async () => {
+    if (!window.confirm('Reset homepage hero background to default cinematic backdrop?')) return;
+    setIsUploadingHeroBg(true);
+    setFeedbackMessage(null);
+
+    try {
+      const res = await settingsService.deleteHeroBackground();
+      if (res.success && res.data) {
+        populateForm(res.data);
+        setHeroBgFile(null);
+        setHeroBgPreview(null);
+        setFeedbackMessage({ type: 'success', text: 'Homepage hero background reset to default.' });
+      } else {
+        setFeedbackMessage({ type: 'error', text: res.error || 'Failed to reset hero background.' });
+      }
+    } catch (err: any) {
+      setFeedbackMessage({ type: 'error', text: err.response?.data?.error || 'Failed to reset hero background.' });
+    } finally {
+      setIsUploadingHeroBg(false);
+    }
+  };
+
+  const handleCancelHeroBg = () => {
+    setHeroBgFile(null);
+    setHeroBgPreview(null);
+    if (heroFileInputRef.current) heroFileInputRef.current.value = '';
+  };
+
   // Subsections definition
   const subSections: Array<{ id: SubSection; label: string; icon: string }> = [
     { id: 'homepage', label: 'Homepage', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -669,6 +745,138 @@ export const WebsiteContentSection: React.FC = () => {
              ========================================================================= */}
           {activeSubTab === 'homepage' && (
             <div className="space-y-8">
+              {/* Homepage Hero Background Setting */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 space-y-6 shadow-xs">
+                <div className="border-b border-gray-100 pb-3 flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="font-serif text-lg font-bold text-[#0B132B]">
+                      Homepage Hero Background
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Manage the primary backdrop image for the main hero section (Max 5MB; JPEG, PNG, WebP).
+                    </p>
+                  </div>
+                  {settings?.hero?.backgroundImage?.url && (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      Custom Image Active
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  {/* Current or Preview Image Display */}
+                  <div className="md:col-span-5 space-y-2">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Current Hero Backdrop
+                    </label>
+                    <div className="relative aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-gray-900 shadow-inner group">
+                      {heroBgPreview ? (
+                        <>
+                          <img
+                            src={heroBgPreview}
+                            alt="Selected Hero Backdrop Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 left-2 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                            Pending Save
+                          </div>
+                        </>
+                      ) : settings?.hero?.backgroundImage?.url ? (
+                        <>
+                          <img
+                            src={settings.hero.backgroundImage.url}
+                            alt="Current Homepage Hero Background"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-xs text-white text-[10px] px-2 py-0.5 rounded">
+                            Active Backdrop
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#253257] text-white">
+                          <svg className="w-8 h-8 text-[#F5A623] mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <p className="font-serif font-bold text-xs text-[#F5A623]">Default Cinematic Motif</p>
+                          <p className="text-[10px] text-gray-400 mt-1 max-w-[200px]">
+                            Sunset gradient &amp; architectural grid lines active
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions & File Selection */}
+                  <div className="md:col-span-7 space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                        Select New Hero Background
+                      </label>
+                      <input
+                        type="file"
+                        ref={heroFileInputRef}
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleHeroBgSelect}
+                        disabled={isUploadingHeroBg}
+                        className="block w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#0B132B] file:text-[#F5A623] hover:file:bg-[#1C2541] file:cursor-pointer cursor-pointer border border-gray-300 rounded-xl bg-gray-50 p-1 focus:outline-hidden"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">
+                        High-resolution landscape image recommended (1920×1080px or higher, max 5MB).
+                      </p>
+                    </div>
+
+                    {/* Button Controls */}
+                    <div className="flex items-center gap-2 flex-wrap pt-2">
+                      {heroBgFile ? (
+                        <>
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={handleUploadHeroBg}
+                            isLoading={isUploadingHeroBg}
+                            disabled={isUploadingHeroBg}
+                          >
+                            Upload &amp; Activate Backdrop
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCancelHeroBg}
+                            disabled={isUploadingHeroBg}
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => heroFileInputRef.current?.click()}
+                            disabled={isUploadingHeroBg}
+                            className="px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                          >
+                            {settings?.hero?.backgroundImage?.url ? 'Replace Image' : 'Choose Image'}
+                          </button>
+
+                          {settings?.hero?.backgroundImage?.url && (
+                            <button
+                              type="button"
+                              onClick={handleDeleteHeroBg}
+                              disabled={isUploadingHeroBg}
+                              className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                            >
+                              Reset to Default Backdrop
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Hero Section Card */}
               <div className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8 space-y-6 shadow-xs">
                 <div className="border-b border-gray-100 pb-3">

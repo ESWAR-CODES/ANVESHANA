@@ -92,4 +92,32 @@ export const settingsService = {
     const res = await apiClient.delete('/api/v1/admin/settings/logo/university');
     return res.data;
   },
+
+  // Hero Background Management
+  uploadHeroBackground: async (
+    file: File
+  ): Promise<{
+    success: boolean;
+    data: ClubSettings;
+    message?: string;
+    error: string | null;
+  }> => {
+    const formData = new FormData();
+    formData.append('heroBackground', file);
+
+    const res = await apiClient.post('/api/v1/admin/settings/hero/background', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  deleteHeroBackground: async (): Promise<{
+    success: boolean;
+    data: ClubSettings;
+    message?: string;
+    error: string | null;
+  }> => {
+    const res = await apiClient.delete('/api/v1/admin/settings/hero/background');
+    return res.data;
+  },
 };
