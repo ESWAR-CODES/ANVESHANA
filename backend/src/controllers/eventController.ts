@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { Event } from '../models/Event';
 import { Registration } from '../models/Registration';
@@ -1125,6 +1126,200 @@ export const getAdminEventFormVersions = async (req: Request, res: Response): Pr
       success: false,
       data: null,
       error: 'Failed to retrieve form version history',
+    });
+  }
+};
+
+/**
+ * Admin: Reopen registration for a closed event.
+ * PATCH /api/v1/admin/events/:id/form/reopen
+ */
+export const reopenAdminEventRegistration = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const idStr = Array.isArray(id) ? id[0] : id;
+
+  if (!idStr || !mongoose.Types.ObjectId.isValid(idStr)) {
+    res.status(400).json({
+      success: false,
+      data: null,
+      error: 'Invalid event identifier format.',
+    });
+    return;
+  }
+
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const event = await Event.findOne({ _id: idStr, isDeleted: false });
+
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
+    // 1. Verify that event has a published form configuration
+    if (!event.formSchema || event.formSchema.length === 0) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: 'Cannot reopen registration: This event does not have a configured registration form. Please build and publish a form first.',
+      });
+      return;
+    }
+
+    // 2. Verify event date has not already passed
+    const now = new Date();
+    if (event.eventDate && new Date(event.eventDate) < now) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: 'Cannot reopen registration: Event date has already passed.',
+      });
+      return;
+    }
+
+    // 3. Verify capacity is not exhausted
+    if (
+      event.maxParticipants !== null &&
+      event.maxParticipants !== undefined &&
+      event.registeredCount >= event.maxParticipants
+    ) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: `Cannot reopen registration: Maximum capacity of ${event.maxParticipants} participants has already been reached. Please increase maximum capacity in event settings first.`,
+      });
+      return;
+    }
+
+    // 4. If deadline was expired, extend or clear it so registration can accept submissions
+    if (event.registrationDeadline && new Date(event.registrationDeadline) < now) {
+      event.registrationDeadline = null;
+    }
+    if (event.regCloseDate && new Date(event.regCloseDate) < now) {
+      event.regCloseDate = null;
+    }
+
+    event.status = 'published';
+    event.formStatus = 'published';
+    event.isPublished = true;
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: event._id,
+        status: event.status,
+        formStatus: event.getFormStatus(),
+        isRegistrationOpen: event.isRegistrationOpen(),
+      },
+      message: `Registration has been successfully reopened for "${event.title}".`,
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to reopen event registration',
+    });
+  }
+};
+
+/**
+ * Admin: Remove form configuration from an event.
+ * DELETE /api/v1/admin/events/:id/form
+ */
+export const removeAdminEventForm = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const idStr = Array.isArray(id) ? id[0] : id;
+
+  if (!idStr || !mongoose.Types.ObjectId.isValid(idStr)) {
+    res.status(400).json({
+      success: false,
+      data: null,
+      error: 'Invalid event identifier format.',
+    });
+    return;
+  }
+
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const event = await Event.findOne({ _id: idStr, isDeleted: false });
+
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
+    // Check existing participant registrations
+    const submissionCount = await Registration.countDocuments({ eventId: event._id });
+
+    // Snapshot existing schema into formHistory if not already present
+    if (event.formSchema && event.formSchema.length > 0) {
+      if (!event.formHistory) event.formHistory = [];
+      const hasLatestSnapshot = event.formHistory.some((h) => h.version === event.formVersion);
+      if (!hasLatestSnapshot) {
+        event.formHistory.push({
+          version: event.formVersion || 1,
+          schema: event.formSchema,
+          title: event.formTitle || event.title,
+          description: event.formDescription || '',
+          publishedAt: new Date(),
+        });
+      }
+    }
+
+    // Clear active form schema and draft
+    event.formSchema = [];
+    event.formDraft = null;
+    event.formDraftTitle = '';
+    event.formDraftDescription = '';
+    event.formStatus = 'no_form';
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: event._id,
+        formStatus: event.getFormStatus(),
+        preservedSubmissions: submissionCount,
+      },
+      message:
+        submissionCount > 0
+          ? `Form configuration removed. ${submissionCount} existing participant registrations and version snapshots have been safely preserved.`
+          : 'Form configuration removed successfully.',
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to remove event form configuration',
     });
   }
 };

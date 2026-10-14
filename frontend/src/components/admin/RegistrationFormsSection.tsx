@@ -21,6 +21,10 @@ export const RegistrationFormsSection: React.FC = () => {
   const [sourceEventId, setSourceEventId] = useState<string>('');
   const [isDuplicating, setIsDuplicating] = useState(false);
 
+  // Remove form confirmation state
+  const [removeTargetEvent, setRemoveTargetEvent] = useState<ClubEvent | null>(null);
+  const [isRemovingForm, setIsRemovingForm] = useState(false);
+
   const fetchEvents = async () => {
     setIsLoading(true);
     setErrorMessage(null);
@@ -87,18 +91,50 @@ export const RegistrationFormsSection: React.FC = () => {
     }
   };
 
-  const handleToggleRegistration = async (event: ClubEvent) => {
+  const handleCloseRegistration = async (event: ClubEvent) => {
     try {
-      if (event.isPublished) {
-        await eventService.closeEventRegistration(event._id);
-        setActionNotice(`Registration closed for "${event.title}".`);
+      const res = await eventService.closeEventRegistration(event._id);
+      if (res.success) {
+        setActionNotice(`Registration successfully closed for "${event.title}".`);
+        fetchEvents();
       } else {
-        await eventService.togglePublishEvent(event._id);
-        setActionNotice(`Updated registration state for "${event.title}".`);
+        setErrorMessage(res.error || 'Failed to close registration.');
       }
-      fetchEvents();
     } catch (err: any) {
-      setErrorMessage(err.response?.data?.error || 'Failed to toggle registration state.');
+      setErrorMessage(err.response?.data?.error || 'Failed to close registration.');
+    }
+  };
+
+  const handleReopenRegistration = async (event: ClubEvent) => {
+    try {
+      const res = await eventService.reopenEventRegistration(event._id);
+      if (res.success) {
+        setActionNotice(`Registration successfully reopened for "${event.title}".`);
+        fetchEvents();
+      } else {
+        setErrorMessage(res.error || 'Failed to reopen registration.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.error || 'Failed to reopen registration.');
+    }
+  };
+
+  const handleConfirmRemoveForm = async () => {
+    if (!removeTargetEvent) return;
+    setIsRemovingForm(true);
+    try {
+      const res = await eventService.removeEventForm(removeTargetEvent._id);
+      if (res.success) {
+        setActionNotice(res.message || `Form configuration removed for "${removeTargetEvent.title}".`);
+        setRemoveTargetEvent(null);
+        fetchEvents();
+      } else {
+        setErrorMessage(res.error || 'Failed to remove form configuration.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.error || 'Failed to remove form configuration.');
+    } finally {
+      setIsRemovingForm(false);
     }
   };
 
@@ -398,16 +434,35 @@ export const RegistrationFormsSection: React.FC = () => {
                           Copy From...
                         </button>
 
-                        <button
-                          onClick={() => handleToggleRegistration(event)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                            event.isPublished
-                              ? 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                              : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                          }`}
-                        >
-                          {event.isPublished ? 'Close Reg' : 'Open Reg'}
-                        </button>
+                        {formStatus === 'published' && (
+                          <button
+                            onClick={() => handleCloseRegistration(event)}
+                            className="px-2.5 py-1.5 bg-rose-50 text-rose-700 hover:bg-rose-100 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                            title="Halt new student registrations for this event"
+                          >
+                            Close Registration
+                          </button>
+                        )}
+
+                        {formStatus === 'closed' && (
+                          <button
+                            onClick={() => handleReopenRegistration(event)}
+                            className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                            title="Reactivate registration for this event"
+                          >
+                            Reopen Registration
+                          </button>
+                        )}
+
+                        {formStatus !== 'no_form' && (
+                          <button
+                            onClick={() => setRemoveTargetEvent(event)}
+                            className="px-2.5 py-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-500 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                            title="Remove form configuration (preserves past submissions)"
+                          >
+                            Remove Form
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -506,6 +561,64 @@ export const RegistrationFormsSection: React.FC = () => {
                 disabled={!sourceEventId}
               >
                 Duplicate Form
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Form Configuration Dialog */}
+      {removeTargetEvent && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 space-y-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg">
+                ⚠
+              </div>
+              <div>
+                <h3 className="font-serif text-base font-bold text-[#0B132B]">
+                  Remove Form Configuration
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Target Event: {removeTargetEvent.title}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl space-y-1 text-xs text-amber-900 leading-relaxed">
+              <p className="font-semibold">Important Protection Notice:</p>
+              <p>
+                Removing this form configuration disables new student registrations.
+                {removeTargetEvent.registeredCount > 0 ? (
+                  <span className="font-semibold">
+                    {' '}All {removeTargetEvent.registeredCount} existing participant submission records and version snapshots will remain safely preserved in the database.
+                  </span>
+                ) : (
+                  ' No registrations exist yet for this event.'
+                )}
+              </p>
+            </div>
+
+            <p className="text-xs text-gray-600">
+              Are you sure you want to remove the form configuration for this event?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRemoveTargetEvent(null)}
+                disabled={isRemovingForm}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmRemoveForm}
+                isLoading={isRemovingForm}
+              >
+                Confirm Remove Form
               </Button>
             </div>
           </div>

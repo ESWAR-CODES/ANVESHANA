@@ -14,13 +14,14 @@ import { TeamManagementSection } from '../../components/admin/TeamManagementSect
 import { ClubSettingsSection } from '../../components/admin/ClubSettingsSection';
 import { WebsiteContentSection } from '../../components/admin/WebsiteContentSection';
 import { RegistrationFormsSection } from '../../components/admin/RegistrationFormsSection';
+import { CentralizedParticipantsSection } from '../../components/admin/CentralizedParticipantsSection';
 
 export const AdminDashboard: React.FC = () => {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const validTabs = ['events', 'forms', 'gallery', 'team', 'feedback', 'content', 'settings'] as const;
+  const validTabs = ['events', 'participants', 'forms', 'gallery', 'team', 'feedback', 'content', 'settings'] as const;
   type TabType = typeof validTabs[number];
 
   const currentTabParam = searchParams.get('tab') as TabType;
@@ -104,6 +105,17 @@ export const AdminDashboard: React.FC = () => {
     setIsParticipantModalOpen(true);
   };
 
+  // Action menu dropdown state
+  const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleOutsideClick = () => setOpenActionMenuId(null);
+    if (openActionMenuId) {
+      window.addEventListener('click', handleOutsideClick);
+      return () => window.removeEventListener('click', handleOutsideClick);
+    }
+  }, [openActionMenuId]);
+
   const handleTogglePublish = async (event: ClubEvent) => {
     try {
       await eventService.togglePublishEvent(event._id);
@@ -111,6 +123,34 @@ export const AdminDashboard: React.FC = () => {
       fetchEvents();
     } catch (err: any) {
       setErrorMessage(err.response?.data?.error || 'Failed to toggle publication status.');
+    }
+  };
+
+  const handleCloseRegistration = async (event: ClubEvent) => {
+    try {
+      const res = await eventService.closeEventRegistration(event._id);
+      if (res.success) {
+        setActionNotice(`Registration closed for "${event.title}".`);
+        fetchEvents();
+      } else {
+        setErrorMessage(res.error || 'Failed to close registration.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.error || 'Failed to close registration.');
+    }
+  };
+
+  const handleReopenRegistration = async (event: ClubEvent) => {
+    try {
+      const res = await eventService.reopenEventRegistration(event._id);
+      if (res.success) {
+        setActionNotice(`Registration successfully reopened for "${event.title}".`);
+        fetchEvents();
+      } else {
+        setErrorMessage(res.error || 'Failed to reopen registration.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.response?.data?.error || 'Failed to reopen registration.');
     }
   };
 
@@ -191,6 +231,20 @@ export const AdminDashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span>Events Management</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('participants')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-left ${
+                activeTab === 'participants'
+                  ? 'bg-[#1C2541] text-[#F5A623] border border-[#F5A623]/30 shadow-xs'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+              <span>Participants</span>
             </button>
 
             <button
@@ -330,6 +384,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="md:hidden bg-[#0B132B] text-white px-4 py-2 flex items-center gap-2 overflow-x-auto border-b border-[#1C2541]">
           {[
             { id: 'events', label: 'Events' },
+            { id: 'participants', label: 'Participants' },
             { id: 'forms', label: 'Registration Forms' },
             { id: 'gallery', label: 'Gallery' },
             { id: 'team', label: 'Core Team' },
@@ -483,48 +538,123 @@ export const AdminDashboard: React.FC = () => {
                               {event.maxParticipants ? ` / ${event.maxParticipants}` : ''}
                             </td>
 
-                            <td className="py-4 px-6 text-right space-x-2">
-                              <button
-                                onClick={() => handleOpenParticipants(event)}
-                                className="px-2.5 py-1 bg-[#F5A623] hover:bg-[#d98f16] text-[#0B132B] rounded text-xs font-semibold transition-colors cursor-pointer"
-                              >
-                                Participants ({event.registeredCount || 0})
-                              </button>
+                            <td className="py-4 px-6 text-right">
+                              <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleOpenParticipants(event)}
+                                  className="px-2.5 py-1.5 bg-[#F5A623] hover:bg-[#d98f16] text-[#0B132B] rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                  title="View participant registrations"
+                                >
+                                  <span>Participants</span>
+                                  <span className="px-1.5 py-0.2 bg-[#0B132B]/15 text-[#0B132B] rounded-full text-[10px] font-mono">
+                                    {event.registeredCount || 0}
+                                  </span>
+                                </button>
 
-                              <button
-                                onClick={() => handleOpenFormBuilder(event)}
-                                className="px-2.5 py-1 bg-[#0B132B] hover:bg-[#F5A623] hover:text-[#0B132B] text-white rounded text-xs font-semibold transition-colors cursor-pointer"
-                              >
-                                Form Builder
-                              </button>
+                                <button
+                                  onClick={() => handleOpenFormBuilder(event)}
+                                  className="px-2.5 py-1.5 bg-[#0B132B] hover:bg-[#1C2541] text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                                  title="Open dynamic form builder"
+                                >
+                                  Form Builder
+                                </button>
 
-                              <button
-                                onClick={() => handleOpenEditModal(event)}
-                                className="px-2.5 py-1 bg-gray-100 hover:bg-[#F5A623] hover:text-[#0B132B] rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                              >
-                                Edit
-                              </button>
+                                <button
+                                  onClick={() => handleOpenEditModal(event)}
+                                  className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                                  title="Edit event metadata"
+                                >
+                                  Edit
+                                </button>
 
-                              <button
-                                onClick={() => handleTogglePublish(event)}
-                                className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                              >
-                                {event.isPublished ? 'Unpublish' : 'Publish'}
-                              </button>
+                                {/* Compact Actions Dropdown Menu */}
+                                <div className="relative inline-block text-left">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenActionMenuId(openActionMenuId === event._id ? null : event._id);
+                                    }}
+                                    className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                                    title="More lifecycle actions"
+                                    aria-haspopup="true"
+                                    aria-expanded={openActionMenuId === event._id}
+                                  >
+                                    <span>Actions</span>
+                                    <span className="text-[10px]">▾</span>
+                                  </button>
 
-                              <button
-                                onClick={() => handleArchive(event)}
-                                className="px-2.5 py-1 bg-gray-100 hover:bg-amber-100 hover:text-amber-800 rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                              >
-                                Archive
-                              </button>
+                                  {openActionMenuId === event._id && (
+                                    <div
+                                      className="absolute right-0 mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-30 animate-fade-in text-left divide-y divide-gray-100"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div className="py-1">
+                                        <button
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            handleTogglePublish(event);
+                                          }}
+                                          className="w-full text-left px-3.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-between cursor-pointer"
+                                        >
+                                          <span>{event.isPublished ? 'Unpublish Event' : 'Publish Event'}</span>
+                                          <span className="text-[10px] text-gray-400">
+                                            {event.isPublished ? 'Active' : 'Draft'}
+                                          </span>
+                                        </button>
 
-                              <button
-                                onClick={() => setDeleteTarget(event)}
-                                className="px-2.5 py-1 bg-gray-100 hover:bg-red-100 hover:text-red-700 rounded text-gray-700 font-medium transition-colors cursor-pointer"
-                              >
-                                Delete
-                              </button>
+                                        {event.formSchema && event.formSchema.length > 0 && (
+                                          event.status === 'closed' || event.formStatus === 'closed' ? (
+                                            <button
+                                              onClick={() => {
+                                                setOpenActionMenuId(null);
+                                                handleReopenRegistration(event);
+                                              }}
+                                              className="w-full text-left px-3.5 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-50 flex items-center justify-between cursor-pointer"
+                                            >
+                                              <span>Reopen Registration</span>
+                                              <span className="text-emerald-500 font-bold">✓</span>
+                                            </button>
+                                          ) : (
+                                            <button
+                                              onClick={() => {
+                                                setOpenActionMenuId(null);
+                                                handleCloseRegistration(event);
+                                              }}
+                                              className="w-full text-left px-3.5 py-2 text-xs font-medium text-amber-700 hover:bg-amber-50 flex items-center justify-between cursor-pointer"
+                                            >
+                                              <span>Close Registration</span>
+                                              <span className="text-amber-500">✕</span>
+                                            </button>
+                                          )
+                                        )}
+
+                                        <button
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            handleArchive(event);
+                                          }}
+                                          className="w-full text-left px-3.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                                        >
+                                          Archive Event
+                                        </button>
+                                      </div>
+
+                                      <div className="py-1">
+                                        <button
+                                          onClick={() => {
+                                            setOpenActionMenuId(null);
+                                            setDeleteTarget(event);
+                                          }}
+                                          className="w-full text-left px-3.5 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center justify-between cursor-pointer"
+                                        >
+                                          <span>Delete Event</span>
+                                          <span className="text-red-400 text-xs">🗑</span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -535,6 +665,9 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </>
           )}
+
+          {/* Centralized Participants Tab */}
+          {activeTab === 'participants' && <CentralizedParticipantsSection />}
 
           {/* Registration Forms Tab */}
           {activeTab === 'forms' && <RegistrationFormsSection />}

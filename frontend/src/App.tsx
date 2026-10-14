@@ -29,6 +29,7 @@ export function App() {
 
           {/* Administrative Namespace (Obscured & Protected) */}
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="/admin/participants" element={<Navigate to="/admin/dashboard?tab=participants" replace />} />
           <Route path="/admin/forms" element={<Navigate to="/admin/dashboard?tab=forms" replace />} />
           <Route path="/admin/registration-forms" element={<Navigate to="/admin/dashboard?tab=forms" replace />} />
           <Route path="/admin/login" element={<AdminLogin />} />

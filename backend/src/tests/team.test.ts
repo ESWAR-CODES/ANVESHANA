@@ -23,34 +23,31 @@ describe('Phase 8: Team Management & 7 Predefined Wings Specifications', () => {
   const validObjectId = new mongoose.Types.ObjectId().toString();
 
   /* =========================================================================
-     1. PREDEFINED 7 CATEGORIES INVARIANCE SPECIFICATION
+     1. SIMPLIFIED 2 CATEGORIES SPECIFICATION (TEAM LEADS & CHAMPIONS)
      ========================================================================= */
-  describe('7 Predefined Categories Specification', () => {
-    it('defines exactly the 7 mandated university wings', () => {
-      expect(REQUIRED_TEAM_CATEGORIES).toHaveLength(7);
+  describe('Simplified 2 Categories Specification', () => {
+    it('defines exactly the 2 mandated categories (Team Leads & Champions)', () => {
+      expect(REQUIRED_TEAM_CATEGORIES).toHaveLength(2);
 
       const categoryNames = REQUIRED_TEAM_CATEGORIES.map((c) => c.name);
       expect(categoryNames).toContain('Team Leads');
-      expect(categoryNames).toContain('Infrastructure');
-      expect(categoryNames).toContain('Design');
-      expect(categoryNames).toContain('Data Management');
-      expect(categoryNames).toContain('Social Media');
-      expect(categoryNames).toContain('Public Relations');
-      expect(categoryNames).toContain('Technical');
+      expect(categoryNames).toContain('Champions');
     });
 
-    it('assigns unique displayOrders from 1 to 7 to all categories', () => {
+    it('assigns unique displayOrders from 1 to 2 to all categories', () => {
       const orders = REQUIRED_TEAM_CATEGORIES.map((c) => c.displayOrder);
       const uniqueOrders = new Set(orders);
-      expect(uniqueOrders.size).toBe(7);
+      expect(uniqueOrders.size).toBe(2);
       expect(Math.min(...orders)).toBe(1);
-      expect(Math.max(...orders)).toBe(7);
+      expect(Math.max(...orders)).toBe(2);
     });
 
-    it('assigns unique slugs to all 7 categories', () => {
+    it('assigns unique slugs to both categories', () => {
       const slugs = REQUIRED_TEAM_CATEGORIES.map((c) => c.slug);
       const uniqueSlugs = new Set(slugs);
-      expect(uniqueSlugs.size).toBe(7);
+      expect(uniqueSlugs.size).toBe(2);
+      expect(slugs).toContain('team-leads');
+      expect(slugs).toContain('champions');
     });
   });
 

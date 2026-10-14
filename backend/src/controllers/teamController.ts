@@ -4,7 +4,7 @@ import { TeamCategory } from '../models/TeamCategory';
 import { TeamMember } from '../models/TeamMember';
 import { getDbStatus } from '../config/db';
 import { uploadImageBuffer, deleteCloudinaryImage } from '../config/cloudinary';
-import { REQUIRED_TEAM_CATEGORIES } from '../scripts/seedCategories';
+import { REQUIRED_TEAM_CATEGORIES, ensureTwoTeamCategoriesAndMigrate } from '../scripts/seedCategories';
 
 /**
  * Public: Retrieve active team categories and their published team members.
@@ -22,6 +22,9 @@ export const getPublicTeam = async (_req: Request, res: Response): Promise<void>
   }
 
   try {
+    // Idempotently ensure the 2 categories exist and legacy members are migrated
+    await ensureTwoTeamCategoriesAndMigrate();
+
     const [categories, members] = await Promise.all([
       TeamCategory.find({ isActive: true }).sort({ displayOrder: 1 }).lean(),
       TeamMember.find({ isPublished: true, isDeleted: false })
@@ -87,19 +90,8 @@ export const getAdminTeamCategories = async (_req: Request, res: Response): Prom
   }
 
   try {
-    let categories = await TeamCategory.find().sort({ displayOrder: 1 }).lean();
-
-    // Auto-seed if categories are missing
-    if (categories.length === 0) {
-      for (const cat of REQUIRED_TEAM_CATEGORIES) {
-        await TeamCategory.findOneAndUpdate(
-          { slug: cat.slug },
-          { $set: { ...cat, isActive: true } },
-          { upsert: true, new: true, setDefaultsOnInsert: true }
-        );
-      }
-      categories = await TeamCategory.find().sort({ displayOrder: 1 }).lean();
-    }
+    await ensureTwoTeamCategoriesAndMigrate();
+    const categories = await TeamCategory.find({ isActive: true }).sort({ displayOrder: 1 }).lean();
 
     res.status(200).json({
       success: true,
@@ -131,6 +123,8 @@ export const getAdminTeamMembers = async (req: Request, res: Response): Promise<
   }
 
   try {
+    await ensureTwoTeamCategoriesAndMigrate();
+
     const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string, 10) || 30));
     const skip = (page - 1) * limit;

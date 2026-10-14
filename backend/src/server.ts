@@ -14,6 +14,7 @@ import teamRoutes from './routes/teamRoutes';
 import adminTeamRoutes from './routes/adminTeamRoutes';
 import settingsRoutes from './routes/settingsRoutes';
 import adminSettingsRoutes from './routes/adminSettingsRoutes';
+import adminParticipantRoutes from './routes/adminParticipantRoutes';
 import { requireAdmin } from './middlewares/auth';
 
 dotenv.config();
@@ -76,9 +77,10 @@ app.get('/api/v1', (_req: Request, res: Response) => {
 // Admin Auth Routes
 app.use('/api/v1/admin/auth', authRoutes);
 
-// Event Routes (Public & Admin)
+// Event & Participant Routes (Public & Admin)
 app.use('/api/v1/events', eventRoutes);
 app.use('/api/v1/admin/events', adminEventRoutes);
+app.use('/api/v1/admin/participants', adminParticipantRoutes);
 
 // Feedback Routes (Public & Admin)
 app.use('/api/v1/feedback', feedbackRoutes);

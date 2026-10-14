@@ -1,53 +1,113 @@
 import { connectDB, disconnectDB } from '../config/db';
 import { TeamCategory } from '../models/TeamCategory';
+import { TeamMember } from '../models/TeamMember';
 
 export const REQUIRED_TEAM_CATEGORIES = [
   {
     name: 'Team Leads',
-    slug: 'leads',
+    slug: 'team-leads',
     displayOrder: 1,
-    description: 'Executive leadership guiding club vision, cross-department coordination, and university liaison.',
+    description: 'Executive student leadership guiding club vision, strategy, cross-department coordination, and university liaison.',
   },
   {
-    name: 'Infrastructure',
-    slug: 'infra',
+    name: 'Champions',
+    slug: 'champions',
     displayOrder: 2,
-    description: 'Logistics, hardware resources, event venues, and physical operations.',
-  },
-  {
-    name: 'Design',
-    slug: 'design',
-    displayOrder: 3,
-    description: 'Creative direction, visual brand identity, UI/UX design, and event promotional graphics.',
-  },
-  {
-    name: 'Data Management',
-    slug: 'data',
-    displayOrder: 4,
-    description: 'Event registration data pipelines, participant databases, records, and club analytics.',
-  },
-  {
-    name: 'Social Media',
-    slug: 'social',
-    displayOrder: 5,
-    description: 'Online community building, event announcements, storytelling, and campus digital campaigns.',
-  },
-  {
-    name: 'Public Relations',
-    slug: 'pr',
-    displayOrder: 6,
-    description: 'Inter-department outreach, faculty coordination, student advocacy, and institutional relations.',
-  },
-  {
-    name: 'Technical',
-    slug: 'tech',
-    displayOrder: 7,
-    description: 'Software architecture, web platforms, hackathon problem statements, and coding workshops.',
+    description: 'Specialist leads and contributors driving technical innovation, design, events, infrastructure, public relations, and club initiatives.',
   },
 ];
 
+/**
+ * Idempotently ensures the 2 simplified categories exist and migrates legacy members to 'champions'.
+ */
+export const ensureTwoTeamCategoriesAndMigrate = async (): Promise<boolean> => {
+  try {
+    // 1. Ensure 'Team Leads' category (handle legacy 'leads' slug)
+    let leadsCat = await TeamCategory.findOne({
+      $or: [{ slug: 'team-leads' }, { slug: 'leads' }, { name: 'Team Leads' }],
+    });
+
+    if (leadsCat) {
+      leadsCat.name = 'Team Leads';
+      leadsCat.slug = 'team-leads';
+      leadsCat.displayOrder = 1;
+      leadsCat.description = REQUIRED_TEAM_CATEGORIES[0].description;
+      leadsCat.isActive = true;
+      await leadsCat.save();
+    } else {
+      leadsCat = await TeamCategory.create({
+        name: 'Team Leads',
+        slug: 'team-leads',
+        displayOrder: 1,
+        description: REQUIRED_TEAM_CATEGORIES[0].description,
+        isActive: true,
+      });
+    }
+
+    // 2. Ensure 'Champions' category
+    let championsCat = await TeamCategory.findOne({
+      $or: [{ slug: 'champions' }, { name: 'Champions' }],
+    });
+
+    if (championsCat) {
+      championsCat.name = 'Champions';
+      championsCat.slug = 'champions';
+      championsCat.displayOrder = 2;
+      championsCat.description = REQUIRED_TEAM_CATEGORIES[1].description;
+      championsCat.isActive = true;
+      await championsCat.save();
+    } else {
+      championsCat = await TeamCategory.create({
+        name: 'Champions',
+        slug: 'champions',
+        displayOrder: 2,
+        description: REQUIRED_TEAM_CATEGORIES[1].description,
+        isActive: true,
+      });
+    }
+
+    // 3. Find any other legacy categories
+    const otherCategories = await TeamCategory.find({
+      _id: { $nin: [leadsCat._id, championsCat._id] },
+    });
+
+    if (otherCategories.length > 0) {
+      const otherCategoryIds = otherCategories.map((c) => c._id);
+
+      // Migrate all members from legacy categories to Champions
+      const migrationResult = await TeamMember.updateMany(
+        { categoryId: { $in: otherCategoryIds } },
+        { $set: { categoryId: championsCat._id } }
+      );
+
+      if (migrationResult.modifiedCount > 0) {
+        console.log(
+          `[TeamMigration] Idempotently migrated ${migrationResult.modifiedCount} legacy team members to Champions.`
+        );
+      }
+
+      // Mark legacy categories as inactive
+      await TeamCategory.updateMany(
+        { _id: { $in: otherCategoryIds } },
+        { $set: { isActive: false } }
+      );
+    }
+
+    // Also safety-migrate any members with dangling category IDs
+    await TeamMember.updateMany(
+      { categoryId: { $nin: [leadsCat._id, championsCat._id] } },
+      { $set: { categoryId: championsCat._id } }
+    );
+
+    return true;
+  } catch (error) {
+    console.error('[TeamMigration] Error during team category migration:', error);
+    return false;
+  }
+};
+
 export const seedCategories = async (): Promise<boolean> => {
-  console.log('[Seed] Seeding 7 Required Team Categories...');
+  console.log('[Seed] Seeding 2 Required Team Categories (Team Leads & Champions)...');
 
   const connected = await connectDB();
   if (!connected) {
@@ -56,23 +116,11 @@ export const seedCategories = async (): Promise<boolean> => {
   }
 
   try {
-    for (const cat of REQUIRED_TEAM_CATEGORIES) {
-      await TeamCategory.findOneAndUpdate(
-        { slug: cat.slug },
-        {
-          $set: {
-            name: cat.name,
-            displayOrder: cat.displayOrder,
-            description: cat.description,
-            isActive: true,
-          },
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+    const success = await ensureTwoTeamCategoriesAndMigrate();
+    if (success) {
+      console.log(`[Seed] Successfully synchronized both required team categories.`);
     }
-
-    console.log(`[Seed] Successfully synchronized all ${REQUIRED_TEAM_CATEGORIES.length} required team categories.`);
-    return true;
+    return success;
   } catch (error) {
     console.error('[Seed] Failed to seed categories:', error instanceof Error ? error.message : error);
     return false;

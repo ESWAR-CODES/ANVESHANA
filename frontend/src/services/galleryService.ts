@@ -47,4 +47,21 @@ export const galleryService = {
     const res = await apiClient.put(`/api/v1/admin/events/${eventId}/gallery`, { images });
     return res.data;
   },
+
+  updateGalleryStory: async (
+    eventId: string,
+    storyData: {
+      title?: string;
+      eventDate?: string;
+      shortSummary?: string;
+      fullStory?: string;
+      challenges?: string;
+      highlights?: string[];
+      winners?: Array<{ position: string; name: string; project?: string }>;
+      coverImage?: { publicId: string; url: string } | null;
+    }
+  ): Promise<{ success: boolean; data: any; message?: string; error: string | null }> => {
+    const res = await apiClient.put(`/api/v1/admin/events/${eventId}/gallery/story`, storyData);
+    return res.data;
+  },
 };

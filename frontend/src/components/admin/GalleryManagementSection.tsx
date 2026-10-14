@@ -2,26 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { eventService } from '../../services/eventService';
 import { galleryService } from '../../services/galleryService';
 import type { ClubEvent } from '../../types/event';
-import type { GalleryImage } from '../../types/gallery';
+import type { GalleryImage, EventGalleryWinner } from '../../types/gallery';
 import { Button } from '../common/Button';
 
 export const GalleryManagementSection: React.FC = () => {
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>('');
   const [selectedEventTitle, setSelectedEventTitle] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'photos' | 'story'>('photos');
+
+  // Gallery Images State
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [isLoadingGallery, setIsLoadingGallery] = useState(false);
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // Upload state
+  // Upload State
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
+  const [altText, setAltText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-
-  // Delete state
   const [deletingPublicId, setDeletingPublicId] = useState<string | null>(null);
+
+  // Story & Retrospective Details State
+  const [storyTitle, setStoryTitle] = useState('');
+  const [storyDate, setStoryDate] = useState('');
+  const [shortSummary, setShortSummary] = useState('');
+  const [fullStory, setFullStory] = useState('');
+  const [challenges, setChallenges] = useState('');
+  const [highlightsInput, setHighlightsInput] = useState('');
+  const [winners, setWinners] = useState<EventGalleryWinner[]>([
+    { position: '1st Place', name: '', project: '' },
+    { position: '2nd Place', name: '', project: '' },
+    { position: '3rd Place', name: '', project: '' },
+  ]);
+  const [isSavingStory, setIsSavingStory] = useState(false);
 
   // Load events for selection
   useEffect(() => {
@@ -48,7 +64,7 @@ export const GalleryManagementSection: React.FC = () => {
     fetchEvents();
   }, []);
 
-  // Fetch gallery for currently selected event
+  // Fetch gallery and story for currently selected event
   const fetchGallery = async (eventId: string) => {
     if (!eventId) return;
     setIsLoadingGallery(true);
@@ -56,6 +72,21 @@ export const GalleryManagementSection: React.FC = () => {
       const res = await galleryService.getAdminGallery(eventId);
       if (res.success && res.data) {
         setImages(res.data.images || []);
+        setStoryTitle(res.data.title || '');
+        setStoryDate(res.data.eventDate || '');
+        setShortSummary(res.data.shortSummary || '');
+        setFullStory(res.data.fullStory || '');
+        setChallenges(res.data.challenges || '');
+        setHighlightsInput((res.data.highlights || []).join('\n'));
+        if (res.data.winners && res.data.winners.length > 0) {
+          setWinners(res.data.winners);
+        } else {
+          setWinners([
+            { position: '1st Place', name: '', project: '' },
+            { position: '2nd Place', name: '', project: '' },
+            { position: '3rd Place', name: '', project: '' },
+          ]);
+        }
       } else {
         setImages([]);
       }
@@ -63,7 +94,7 @@ export const GalleryManagementSection: React.FC = () => {
       setImages([]);
       if (err.response?.status !== 404) {
         setNotification({
-          text: err.response?.data?.error || 'Failed to load event gallery photos.',
+          text: err.response?.data?.error || 'Failed to load event gallery data.',
           type: 'error',
         });
       }
@@ -85,6 +116,7 @@ export const GalleryManagementSection: React.FC = () => {
     setFileToUpload(null);
     setFilePreview(null);
     setCaption('');
+    setAltText('');
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,6 +153,7 @@ export const GalleryManagementSection: React.FC = () => {
     const formData = new FormData();
     formData.append('image', fileToUpload);
     if (caption.trim()) formData.append('caption', caption.trim());
+    if (altText.trim()) formData.append('altText', altText.trim());
     formData.append('displayOrder', String(images.length));
 
     try {
@@ -130,6 +163,7 @@ export const GalleryManagementSection: React.FC = () => {
         setFileToUpload(null);
         setFilePreview(null);
         setCaption('');
+        setAltText('');
         fetchGallery(selectedEventId);
       } else {
         setNotification({ text: res.error || 'Failed to upload photo.', type: 'error' });
@@ -162,6 +196,68 @@ export const GalleryManagementSection: React.FC = () => {
     }
   };
 
+  const handleSaveStory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventId) return;
+
+    setIsSavingStory(true);
+    setNotification(null);
+
+    const parsedHighlights = highlightsInput
+      .split('\n')
+      .map((h) => h.trim())
+      .filter((h) => h.length > 0);
+
+    const validWinners = winners.filter((w) => w.name.trim().length > 0);
+
+    try {
+      const res = await galleryService.updateGalleryStory(selectedEventId, {
+        title: storyTitle.trim() || selectedEventTitle,
+        eventDate: storyDate.trim(),
+        shortSummary: shortSummary.trim(),
+        fullStory: fullStory.trim(),
+        challenges: challenges.trim(),
+        highlights: parsedHighlights,
+        winners: validWinners,
+      });
+
+      if (res.success) {
+        setNotification({
+          text: 'Event retrospective story saved and published successfully.',
+          type: 'success',
+        });
+      } else {
+        setNotification({ text: res.error || 'Failed to save story.', type: 'error' });
+      }
+    } catch (err: any) {
+      setNotification({
+        text: err.response?.data?.error || 'Failed to save event story.',
+        type: 'error',
+      });
+    } finally {
+      setIsSavingStory(false);
+    }
+  };
+
+  const addWinnerRow = () => {
+    setWinners((prev) => [
+      ...prev,
+      { position: `${prev.length + 1}th Place`, name: '', project: '' },
+    ]);
+  };
+
+  const removeWinnerRow = (index: number) => {
+    setWinners((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateWinnerField = (index: number, field: keyof EventGalleryWinner, val: string) => {
+    setWinners((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: val };
+      return next;
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Alert Notifications */}
@@ -183,10 +279,10 @@ export const GalleryManagementSection: React.FC = () => {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="font-serif text-lg font-bold text-[#0B132B]">
-              Event Retrospective Galleries
+              Event Retrospectives &amp; Gallery
             </h2>
             <p className="text-xs text-gray-500">
-              Upload event retrospective photography (up to 5MB per photo). Photos are displayed on the public event page.
+              Manage retrospective photography (5MB per photo) and publish rich event retrospective stories.
             </p>
           </div>
 
@@ -210,6 +306,32 @@ export const GalleryManagementSection: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Tab Switcher: Photos vs Story */}
+        <div className="flex items-center gap-2 border-t border-gray-100 pt-3">
+          <button
+            type="button"
+            onClick={() => setActiveTab('photos')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'photos'
+                ? 'bg-[#0B132B] text-[#F5A623] shadow-xs'
+                : 'bg-gray-100 text-gray-600 hover:text-[#0B132B]'
+            }`}
+          >
+            📷 Photo Gallery ({images.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('story')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'story'
+                ? 'bg-[#0B132B] text-[#F5A623] shadow-xs'
+                : 'bg-gray-100 text-gray-600 hover:text-[#0B132B]'
+            }`}
+          >
+            📝 Retrospective Story &amp; Winners
+          </button>
+        </div>
       </div>
 
       {isLoadingEvents ? (
@@ -219,7 +341,7 @@ export const GalleryManagementSection: React.FC = () => {
           <p className="font-serif text-base font-bold text-gray-700">No events found in database</p>
           <p className="text-xs text-gray-500">Create an event under Events Management before adding gallery photos.</p>
         </div>
-      ) : (
+      ) : activeTab === 'photos' ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Upload New Photo (5 MB Limit) */}
           <div className="lg:col-span-4 bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm space-y-4 h-fit">
@@ -262,7 +384,7 @@ export const GalleryManagementSection: React.FC = () => {
 
               <div>
                 <label htmlFor="gallery-caption" className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                  Caption / Description (Optional)
+                  Caption (Optional)
                 </label>
                 <input
                   id="gallery-caption"
@@ -271,6 +393,21 @@ export const GalleryManagementSection: React.FC = () => {
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   placeholder="e.g. Participants pitching during finals"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="gallery-alt" className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Alt Text for Accessibility (Optional)
+                </label>
+                <input
+                  id="gallery-alt"
+                  type="text"
+                  maxLength={200}
+                  value={altText}
+                  onChange={(e) => setAltText(e.target.value)}
+                  placeholder="e.g. Three students presenting a hardware prototype on stage"
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
                 />
               </div>
@@ -329,7 +466,7 @@ export const GalleryManagementSection: React.FC = () => {
                     <div className="relative aspect-[4/3] overflow-hidden bg-black/5">
                       <img
                         src={img.url}
-                        alt={img.caption || 'Event photograph'}
+                        alt={img.altText || img.caption || 'Event photograph'}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <button
@@ -342,16 +479,186 @@ export const GalleryManagementSection: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="p-2.5 bg-white border-t border-gray-100">
+                    <div className="p-2.5 bg-white border-t border-gray-100 space-y-0.5">
                       <p className="text-[11px] text-gray-700 truncate font-medium">
                         {img.caption || 'Untitled photo'}
                       </p>
+                      {img.altText && (
+                        <p className="text-[10px] text-gray-400 truncate italic">
+                          Alt: {img.altText}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+        </div>
+      ) : (
+        /* Story & Retrospective Details Tab */
+        <div className="bg-white rounded-2xl border border-[#E2E8F0] p-6 shadow-sm space-y-6">
+          <div className="border-b border-gray-100 pb-4">
+            <h3 className="font-serif text-lg font-bold text-[#0B132B]">
+              Retrospective Story Editor
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Document the outcomes, challenges, winning teams, and milestones for {selectedEventTitle}.
+            </p>
+          </div>
+
+          <form onSubmit={handleSaveStory} className="space-y-6 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Retrospective Headline / Title
+                </label>
+                <input
+                  type="text"
+                  value={storyTitle}
+                  onChange={(e) => setStoryTitle(e.target.value)}
+                  placeholder="e.g. Anveshana Hackathon 2026: 36 Hours of Student Innovation"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Event Concluded Date
+                </label>
+                <input
+                  type="text"
+                  value={storyDate}
+                  onChange={(e) => setStoryDate(e.target.value)}
+                  placeholder="e.g. October 15, 2026"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Executive Short Summary
+              </label>
+              <textarea
+                rows={2}
+                value={shortSummary}
+                onChange={(e) => setShortSummary(e.target.value)}
+                placeholder="High-level overview of event achievements and student turnout..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Full Retrospective Story
+              </label>
+              <textarea
+                rows={5}
+                value={fullStory}
+                onChange={(e) => setFullStory(e.target.value)}
+                placeholder="Detailed narrative describing the keynote speeches, coding rounds, project presentations, and atmosphere..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Technical Challenges Faced &amp; Solved
+                </label>
+                <textarea
+                  rows={4}
+                  value={challenges}
+                  onChange={(e) => setChallenges(e.target.value)}
+                  placeholder="Describe unique engineering challenges, API rate limits, hardware debugging hurdles..."
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  Key Highlights / Takeaways (One per line)
+                </label>
+                <textarea
+                  rows={4}
+                  value={highlightsInput}
+                  onChange={(e) => setHighlightsInput(e.target.value)}
+                  placeholder="120+ Student participants across 2 Schools&#10;14 Working prototypes submitted&#10;Industry mentorship from top alumni"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                />
+              </div>
+            </div>
+
+            {/* Winners / Podium Section */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-serif text-sm font-bold text-[#0B132B]">
+                    Winners &amp; Recognition Podium
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    Document the award winners and standout projects.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addWinnerRow}
+                  className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-xs font-semibold cursor-pointer"
+                >
+                  + Add Position
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {winners.map((winner, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={winner.position}
+                      onChange={(e) => updateWinnerField(idx, 'position', e.target.value)}
+                      placeholder="e.g. 1st Place"
+                      className="w-32 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                    />
+                    <input
+                      type="text"
+                      value={winner.name}
+                      onChange={(e) => updateWinnerField(idx, 'name', e.target.value)}
+                      placeholder="Team / Student Name"
+                      className="flex-1 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                    />
+                    <input
+                      type="text"
+                      value={winner.project || ''}
+                      onChange={(e) => updateWinnerField(idx, 'project', e.target.value)}
+                      placeholder="Project Name / Description (Optional)"
+                      className="flex-1 px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-[#F5A623]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeWinnerRow(idx)}
+                      className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-600 flex items-center justify-center text-xs cursor-pointer"
+                      title="Remove row"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex items-center justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                isLoading={isSavingStory}
+                disabled={isSavingStory}
+              >
+                Save Retrospective Story
+              </Button>
+            </div>
+          </form>
         </div>
       )}
     </div>

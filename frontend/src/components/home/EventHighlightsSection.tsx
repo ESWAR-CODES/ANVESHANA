@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { eventService } from '../../services/eventService';
 import type { ClubEvent } from '../../types/event';
 import { StatusBadge } from '../common/StatusBadge';
@@ -11,6 +11,7 @@ interface EventHighlightsSectionProps {
 }
 
 export const EventHighlightsSection: React.FC<EventHighlightsSectionProps> = ({ settings: propSettings }) => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sectionData, setSectionData] = useState<any>(propSettings?.homeEventsSection || null);
@@ -117,7 +118,17 @@ export const EventHighlightsSection: React.FC<EventHighlightsSectionProps> = ({ 
               return (
                 <div
                   key={event._id}
-                  className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
+                  role="link"
+                  tabIndex={0}
+                  aria-label={`View details for ${event.title}`}
+                  onClick={() => navigate(`/events/${event.slug}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/events/${event.slug}`);
+                    }
+                  }}
+                  className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden shadow-xs hover:shadow-md hover:border-[#F5A623]/50 transition-all duration-200 flex flex-col justify-between group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F5A623]"
                 >
                   {/* Card Header with Banner */}
                   <div className="relative aspect-[16/9] bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#253257] overflow-hidden">
@@ -149,9 +160,7 @@ export const EventHighlightsSection: React.FC<EventHighlightsSectionProps> = ({ 
                   <div className="p-6 flex-1 flex flex-col justify-between">
                     <div>
                       <h3 className="font-serif text-xl font-bold text-[#0B132B] group-hover:text-[#F5A623] transition-colors leading-snug mb-2 line-clamp-2">
-                        <Link to={`/events/${event.slug}`}>
-                          {event.title}
-                        </Link>
+                        {event.title}
                       </h3>
                       <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-3">
                         <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,12 +182,16 @@ export const EventHighlightsSection: React.FC<EventHighlightsSectionProps> = ({ 
                         <span className="truncate">{event.venue}</span>
                       </span>
 
-                      <Link
-                        to={`/events/${event.slug}`}
-                        className="font-semibold text-[#0B132B] group-hover:text-[#F5A623] transition-colors inline-flex items-center gap-1"
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/events/${event.slug}`);
+                        }}
+                        className="font-semibold text-[#0B132B] group-hover:text-[#F5A623] transition-colors inline-flex items-center gap-1 cursor-pointer"
                       >
                         Details →
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </div>

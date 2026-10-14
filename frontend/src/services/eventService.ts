@@ -116,6 +116,20 @@ export const eventService = {
     return res.data;
   },
 
+  reopenEventRegistration: async (
+    id: string
+  ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
+    const res = await apiClient.patch(`/api/v1/admin/events/${id}/form/reopen`);
+    return res.data;
+  },
+
+  removeEventForm: async (
+    id: string
+  ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
+    const res = await apiClient.delete(`/api/v1/admin/events/${id}/form`);
+    return res.data;
+  },
+
   getEventFormVersions: async (
     id: string
   ): Promise<{ success: boolean; data: any[]; error: string | null }> => {
@@ -161,6 +175,53 @@ export const eventService = {
       params: { format },
       responseType: 'blob',
     });
+    return res.data;
+  },
+
+  // Centralized Participant Management & Secure Exports
+  getAllParticipants: async (
+    params?: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      eventId?: string;
+      formVersion?: number;
+      dateFrom?: string;
+      dateTo?: string;
+    }
+  ): Promise<{
+    success: boolean;
+    data: {
+      registrations: any[];
+      events: Array<{ id: string; title: string; slug: string }>;
+      pagination: { total: number; page: number; limit: number; totalPages: number };
+    };
+    error: string | null;
+  }> => {
+    const res = await apiClient.get('/api/v1/admin/participants', { params });
+    return res.data;
+  },
+
+  exportAllParticipants: async (
+    format: 'csv' | 'xlsx',
+    eventId?: string
+  ): Promise<Blob> => {
+    const res = await apiClient.get('/api/v1/admin/participants/export', {
+      params: { format, eventId },
+      responseType: 'blob',
+    });
+    return res.data;
+  },
+
+  clearEventParticipants: async (
+    eventId: string
+  ): Promise<{
+    success: boolean;
+    data: { deletedCount: number; eventId: string; eventTitle: string };
+    message?: string;
+    error: string | null;
+  }> => {
+    const res = await apiClient.delete(`/api/v1/admin/events/${eventId}/participants`);
     return res.data;
   },
 };

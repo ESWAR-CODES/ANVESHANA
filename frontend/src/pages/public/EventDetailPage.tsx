@@ -3,11 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { eventService } from '../../services/eventService';
 import { galleryService } from '../../services/galleryService';
 import type { ClubEvent } from '../../types/event';
-import type { GalleryImage } from '../../types/gallery';
+import type { GalleryImage, EventGalleryData } from '../../types/gallery';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
-import { DynamicFormRenderer } from '../../components/events/DynamicFormRenderer';
+import { RegistrationModal } from '../../components/events/RegistrationModal';
 import type { FormFieldConfig } from '../../types/event';
 
 export const EventDetailPage: React.FC = () => {
@@ -15,7 +15,9 @@ export const EventDetailPage: React.FC = () => {
   const [event, setEvent] = useState<ClubEvent | null>(null);
   const [formSchema, setFormSchema] = useState<FormFieldConfig[]>([]);
   const [formVersion, setFormVersion] = useState<number>(1);
+  const [isRegistrationModalOpen, setIsRegistrationModalOpen] = useState<boolean>(false);
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
+  const [galleryStory, setGalleryStory] = useState<EventGalleryData | null>(null);
   const [previewImage, setPreviewImage] = useState<GalleryImage | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export const EventDetailPage: React.FC = () => {
 
         if (galleryRes.status === 'fulfilled' && galleryRes.value.success && galleryRes.value.data) {
           setGalleryImages(galleryRes.value.data.images || []);
+          setGalleryStory(galleryRes.value.data);
         }
       } catch (err: any) {
         const msg =
@@ -131,13 +134,6 @@ export const EventDetailPage: React.FC = () => {
   const computedStatus = event.computedStatus || 'upcoming';
   const isOpen = computedStatus === 'open';
   const isFull = computedStatus === 'full';
-
-  const scrollToRegister = () => {
-    const el = document.getElementById('registration-section');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <div className="py-28 sm:py-32 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -254,15 +250,21 @@ export const EventDetailPage: React.FC = () => {
           {/* Registration CTA Action */}
           <div className="space-y-3">
             {isOpen ? (
-              <Button
-                variant="primary"
-                size="lg"
-                fullWidth
-                onClick={scrollToRegister}
-                className="font-bold shadow-md shadow-[#F5A623]/20"
-              >
-                Register for Event ↓
-              </Button>
+              formSchema.length > 0 ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={() => setIsRegistrationModalOpen(true)}
+                  className="font-bold shadow-md shadow-[#F5A623]/20"
+                >
+                  Register Now →
+                </Button>
+              ) : (
+                <Button variant="secondary" size="lg" fullWidth disabled>
+                  Registration Opening Soon
+                </Button>
+              )
             ) : isFull ? (
               <Button variant="secondary" size="lg" fullWidth disabled>
                 Event Capacity Full
@@ -304,16 +306,41 @@ export const EventDetailPage: React.FC = () => {
             </p>
           </div>
 
-          {/* Native Dynamic Registration Section */}
-          <div id="registration-section" className="pt-4 scroll-mt-28">
+          {/* Registration Section Card */}
+          <div id="registration-section" className="pt-2">
             {isOpen ? (
               formSchema.length > 0 ? (
-                <DynamicFormRenderer
-                  identifier={slug!}
-                  eventTitle={event.title}
-                  formSchema={formSchema}
-                  formVersion={formVersion}
-                />
+                <div className="bg-gradient-to-br from-[#0B132B] to-[#1C2541] text-white p-6 sm:p-8 rounded-2xl border border-[#F5A623]/30 shadow-lg relative overflow-hidden">
+                  <div className="relative z-10 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="text-xs font-bold text-[#F5A623] uppercase tracking-wider">
+                        Registrations Open
+                      </span>
+                    </div>
+                    <h4 className="font-serif text-xl sm:text-2xl font-bold text-white">
+                      Ready to Participate?
+                    </h4>
+                    <p className="text-xs text-gray-300 max-w-lg leading-relaxed">
+                      Seats are allocated on a first-come, first-served basis. Secure your spot now by completing the registration form.
+                    </p>
+                    <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => setIsRegistrationModalOpen(true)}
+                        className="font-bold text-[#0B132B] w-full sm:w-auto"
+                      >
+                        Register Now
+                      </Button>
+                      {event.maxParticipants && (
+                        <span className="text-xs text-gray-300 font-mono">
+                          {Math.max(0, event.maxParticipants - (event.registeredCount || 0))} spots remaining
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="bg-white p-8 rounded-2xl border border-gray-200 text-center space-y-2">
                   <p className="font-serif text-lg font-bold text-[#0B132B]">Registration Opening Shortly</p>
@@ -338,42 +365,150 @@ export const EventDetailPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Retrospective Event Gallery (Rendered strictly when event photos exist) */}
-      {galleryImages.length > 0 && (
-        <section className="mt-16 pt-12 border-t border-[#E2E8F0]">
-          <div className="mb-8">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#F5A623] bg-[#0B132B] px-3 py-1 rounded-full">
-              Event Memories
+      {/* Retrospective Event Story & Gallery (Rendered when event story or photos exist) */}
+      {(galleryImages.length > 0 || galleryStory?.shortSummary || galleryStory?.fullStory || (galleryStory?.winners && galleryStory.winners.length > 0)) && (
+        <section className="mt-16 pt-12 border-t border-[#E2E8F0] space-y-10">
+          <div className="border-b border-gray-100 pb-6">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#F5A623] bg-[#0B132B] px-3 py-1 rounded-full shadow-inner">
+              Event Retrospective
             </span>
-            <h2 className="font-serif text-2xl sm:text-3xl font-bold text-[#0B132B] mt-3">
-              Event Retrospective &amp; Gallery
+            <h2 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#0B132B] mt-3">
+              {galleryStory?.title || `${event.title} Retrospective & Highlights`}
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
-              Moments, live presentations, and student projects captured during {event.title}.
-            </p>
+            {galleryStory?.eventDate && (
+              <p className="text-xs text-[#F5A623] font-semibold mt-1">
+                Concluded: {galleryStory.eventDate}
+              </p>
+            )}
+            {galleryStory?.shortSummary && (
+              <p className="text-sm text-gray-700 font-medium bg-[#FDFBF7] p-4 rounded-xl border border-[#E2E8F0] mt-4 leading-relaxed">
+                {galleryStory.shortSummary}
+              </p>
+            )}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {galleryImages.map((img, idx) => (
-              <div
-                key={img.publicId || idx}
-                onClick={() => setPreviewImage(img)}
-                className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-md transition-all"
-              >
-                <img
-                  src={img.url}
-                  alt={img.caption || `${event.title} photo ${idx + 1}`}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  loading="lazy"
-                />
-                {img.caption && (
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-6 text-white text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="truncate font-medium">{img.caption}</p>
-                  </div>
-                )}
+          {/* Full Story Narrative if present */}
+          {galleryStory?.fullStory && (
+            <div className="space-y-3">
+              <h3 className="font-serif text-xl font-bold text-[#0B132B]">
+                The Story Behind the Event
+              </h3>
+              <div className="text-xs sm:text-sm text-gray-600 leading-relaxed whitespace-pre-line bg-white p-6 rounded-2xl border border-gray-100 shadow-xs">
+                {galleryStory.fullStory}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
+
+          {/* Challenges & Key Highlights Grid */}
+          {(galleryStory?.challenges || (galleryStory?.highlights && galleryStory.highlights.length > 0)) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {galleryStory.challenges && (
+                <div className="bg-[#FDFBF7] p-6 rounded-2xl border border-[#E2E8F0] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-500 font-bold">⚡</span>
+                    <h4 className="font-serif text-base font-bold text-[#0B132B]">
+                      Challenges Tackled
+                    </h4>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">
+                    {galleryStory.challenges}
+                  </p>
+                </div>
+              )}
+
+              {galleryStory.highlights && galleryStory.highlights.length > 0 && (
+                <div className="bg-[#0B132B] text-white p-6 rounded-2xl border border-[#F5A623]/20 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#F5A623] font-bold">★</span>
+                    <h4 className="font-serif text-base font-bold text-white">
+                      Key Highlights &amp; Milestones
+                    </h4>
+                  </div>
+                  <ul className="space-y-2 text-xs text-gray-300">
+                    {galleryStory.highlights.map((h, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-[#F5A623] font-bold shrink-0">✓</span>
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Winners & Standout Projects Podium */}
+          {galleryStory?.winners && galleryStory.winners.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[#F5A623] text-lg">🏆</span>
+                <h3 className="font-serif text-xl font-bold text-[#0B132B]">
+                  Winners &amp; Standout Projects
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {galleryStory.winners.map((winner, idx) => (
+                  <div
+                    key={idx}
+                    className="p-5 rounded-xl border border-gray-200 bg-white shadow-xs space-y-1 hover:border-[#F5A623] transition-colors"
+                  >
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-[#d98f16] border border-amber-200">
+                      {winner.position}
+                    </span>
+                    <h5 className="font-serif font-bold text-base text-[#0B132B] pt-1">
+                      {winner.name}
+                    </h5>
+                    {winner.project && (
+                      <p className="text-xs text-gray-600 italic">
+                        "{winner.project}"
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Retrospective Photography Grid */}
+          {galleryImages.length > 0 && (
+            <div className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-serif text-xl font-bold text-[#0B132B]">
+                    Retrospective Photography
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Moments and presentations captured during {event.title}.
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-gray-400">
+                  {galleryImages.length} {galleryImages.length === 1 ? 'photo' : 'photos'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {galleryImages.map((img, idx) => (
+                  <div
+                    key={img.publicId || idx}
+                    onClick={() => setPreviewImage(img)}
+                    className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer shadow-xs hover:shadow-md transition-all"
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.altText || img.caption || `${event.title} photo ${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
+                    />
+                    {img.caption && (
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-6 text-white text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="truncate font-medium">{img.caption}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -396,7 +531,7 @@ export const EventDetailPage: React.FC = () => {
             </button>
             <img
               src={previewImage.url}
-              alt={previewImage.caption || 'Event photo preview'}
+              alt={previewImage.altText || previewImage.caption || 'Event photo preview'}
               className="max-h-[75vh] w-auto object-contain rounded-lg"
             />
             {previewImage.caption && (
@@ -407,6 +542,23 @@ export const EventDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Registration Modal Dialog */}
+      <RegistrationModal
+        isOpen={isRegistrationModalOpen}
+        onClose={() => setIsRegistrationModalOpen(false)}
+        eventSlug={slug!}
+        eventTitle={event.title}
+        eventDate={event.eventDate}
+        venue={event.venue}
+        formSchema={formSchema}
+        formVersion={formVersion}
+        onSuccess={() => {
+          setEvent((prev) =>
+            prev ? { ...prev, registeredCount: (prev.registeredCount || 0) + 1 } : null
+          );
+        }}
+      />
     </div>
   );
 };

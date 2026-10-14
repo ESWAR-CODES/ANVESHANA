@@ -62,6 +62,14 @@ export const getPublicEventGallery = async (req: Request, res: Response): Promis
           slug: event.slug,
           eventDate: event.eventDate,
         },
+        title: gallery?.title || event.title,
+        eventDate: gallery?.eventDate || event.eventDate,
+        shortSummary: gallery?.shortSummary || '',
+        fullStory: gallery?.fullStory || '',
+        challenges: gallery?.challenges || '',
+        highlights: gallery?.highlights || [],
+        winners: gallery?.winners || [],
+        coverImage: gallery?.coverImage || null,
         images: sortedImages,
       },
       error: null,
@@ -76,7 +84,7 @@ export const getPublicEventGallery = async (req: Request, res: Response): Promis
 };
 
 /**
- * Admin: Retrieve gallery images for an event by ID.
+ * Admin: Retrieve gallery images and story for an event by ID.
  * GET /api/v1/admin/events/:id/gallery
  */
 export const getAdminEventGallery = async (req: Request, res: Response): Promise<void> => {
@@ -123,6 +131,14 @@ export const getAdminEventGallery = async (req: Request, res: Response): Promise
       data: {
         eventId: event._id,
         eventTitle: event.title,
+        title: gallery?.title || event.title,
+        eventDate: gallery?.eventDate || event.eventDate,
+        shortSummary: gallery?.shortSummary || '',
+        fullStory: gallery?.fullStory || '',
+        challenges: gallery?.challenges || '',
+        highlights: gallery?.highlights || [],
+        winners: gallery?.winners || [],
+        coverImage: gallery?.coverImage || null,
         images: sortedImages,
       },
       error: null,
@@ -190,6 +206,7 @@ export const uploadGalleryImage = async (req: Request, res: Response): Promise<v
       publicId: uploadRes.publicId,
       url: uploadRes.url,
       caption: typeof req.body.caption === 'string' ? req.body.caption.trim().slice(0, 200) : '',
+      altText: typeof req.body.altText === 'string' ? req.body.altText.trim().slice(0, 200) : (typeof req.body.caption === 'string' ? req.body.caption.trim().slice(0, 200) : ''),
       displayOrder: parseInt(req.body.displayOrder as string, 10) || 0,
     };
 
@@ -382,6 +399,101 @@ export const updateGalleryImages = async (req: Request, res: Response): Promise<
       success: false,
       data: null,
       error: 'Failed to update gallery.',
+    });
+  }
+};
+
+/**
+ * Admin: Update rich event retrospective story (title, date, summary, full story, challenges, highlights, winners).
+ * PUT /api/v1/admin/events/:id/gallery/story
+ */
+export const updateGalleryStory = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const idStr = Array.isArray(id) ? id[0] : id;
+
+  if (!idStr || !mongoose.Types.ObjectId.isValid(idStr)) {
+    res.status(400).json({
+      success: false,
+      data: null,
+      error: 'Invalid event identifier format.',
+    });
+    return;
+  }
+
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const event = await Event.findOne({ _id: idStr, isDeleted: false });
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found.',
+      });
+      return;
+    }
+
+    const {
+      title,
+      eventDate,
+      shortSummary,
+      fullStory,
+      challenges,
+      highlights,
+      winners,
+      coverImage,
+    } = req.body;
+
+    const updatePayload: any = {};
+    if (typeof title === 'string') updatePayload.title = title.trim();
+    if (typeof eventDate === 'string') updatePayload.eventDate = eventDate.trim();
+    if (typeof shortSummary === 'string') updatePayload.shortSummary = shortSummary.trim();
+    if (typeof fullStory === 'string') updatePayload.fullStory = fullStory.trim();
+    if (typeof challenges === 'string') updatePayload.challenges = challenges.trim();
+    if (Array.isArray(highlights)) {
+      updatePayload.highlights = highlights.map((h: any) => String(h).trim()).filter(Boolean);
+    }
+    if (Array.isArray(winners)) {
+      updatePayload.winners = winners
+        .map((w: any) => ({
+          position: String(w.position || '').trim(),
+          name: String(w.name || '').trim(),
+          project: String(w.project || '').trim(),
+        }))
+        .filter((w) => w.position && w.name);
+    }
+    if (coverImage && typeof coverImage === 'object') {
+      updatePayload.coverImage = {
+        publicId: coverImage.publicId,
+        url: coverImage.url,
+      };
+    }
+
+    const gallery = await EventGallery.findOneAndUpdate(
+      { eventId: event._id },
+      { $set: updatePayload },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      data: gallery,
+      message: 'Event retrospective story updated successfully.',
+      error: null,
+    });
+  } catch (error: any) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: error.message || 'Failed to update event retrospective story.',
     });
   }
 };

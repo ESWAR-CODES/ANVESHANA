@@ -136,12 +136,27 @@ export interface IRegistration extends Document<string> {
 
 export interface IGalleryImage extends MediaAsset {
   caption?: string;
+  altText?: string;
   displayOrder: number;
+}
+
+export interface IEventGalleryWinner {
+  position: string;
+  name: string;
+  project?: string;
 }
 
 export interface IEventGallery extends Document {
   _id: Types.ObjectId;
   eventId: Types.ObjectId;
+  title?: string;
+  eventDate?: string;
+  shortSummary?: string;
+  fullStory?: string;
+  challenges?: string;
+  highlights?: string[];
+  winners?: IEventGalleryWinner[];
+  coverImage?: MediaAsset | null;
   images: IGalleryImage[];
   createdAt: Date;
   updatedAt: Date;

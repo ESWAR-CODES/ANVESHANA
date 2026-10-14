@@ -16,9 +16,35 @@ const GalleryImageSchema = new Schema(
       default: '',
       trim: true,
     },
+    altText: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     displayOrder: {
       type: Number,
       default: 0,
+    },
+  },
+  { _id: false }
+);
+
+const EventGalleryWinnerSchema = new Schema(
+  {
+    position: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    project: {
+      type: String,
+      default: '',
+      trim: true,
     },
   },
   { _id: false }
@@ -31,6 +57,43 @@ const EventGallerySchema = new Schema<IEventGallery>(
       ref: 'Event',
       required: [true, 'Event ID reference is required'],
       unique: true,
+    },
+    title: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    eventDate: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    shortSummary: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    fullStory: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    challenges: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    highlights: {
+      type: [String],
+      default: [],
+    },
+    winners: {
+      type: [EventGalleryWinnerSchema],
+      default: [],
+    },
+    coverImage: {
+      publicId: { type: String, default: null },
+      url: { type: String, default: null },
     },
     images: {
       type: [GalleryImageSchema],

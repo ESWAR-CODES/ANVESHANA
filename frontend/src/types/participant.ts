@@ -13,6 +13,7 @@ export interface ParticipantSummary {
   email: string;
   phone?: string;
   collegeId?: string;
+  studentId?: string;
   referenceNumber: string;
   formVersion: number;
   status: 'confirmed' | 'cancelled' | 'attended';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { eventService } from '../../services/eventService';
 import type { ClubEvent } from '../../types/event';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -9,6 +9,7 @@ import { EmptyState } from '../../components/common/EmptyState';
 import { settingsService } from '../../services/settingsService';
 
 export const EventsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -275,7 +276,17 @@ export const EventsPage: React.FC = () => {
             return (
               <div
                 key={event._id}
-                className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
+                role="link"
+                tabIndex={0}
+                aria-label={`View details for ${event.title}`}
+                onClick={() => navigate(`/events/${event.slug}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/events/${event.slug}`);
+                  }
+                }}
+                className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden shadow-xs hover:shadow-md hover:border-[#F5A623]/50 transition-all duration-200 flex flex-col justify-between group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#F5A623]"
               >
                 {/* 16:9 Banner Image with Category Tag */}
                 <div className="relative aspect-[16/9] bg-gradient-to-br from-[#0B132B] via-[#1C2541] to-[#253257] overflow-hidden">
@@ -307,9 +318,7 @@ export const EventsPage: React.FC = () => {
                 <div className="p-6 flex-1 flex flex-col justify-between">
                   <div>
                     <h3 className="font-serif text-xl font-bold text-[#0B132B] group-hover:text-[#F5A623] transition-colors leading-snug mb-2 line-clamp-2">
-                      <Link to={`/events/${event.slug}`}>
-                        {event.title}
-                      </Link>
+                      {event.title}
                     </h3>
 
                     {/* Metadata Strip */}
@@ -338,11 +347,17 @@ export const EventsPage: React.FC = () => {
                     <span className="text-[11px] font-semibold text-gray-400">
                       {event.registeredCount > 0 ? `${event.registeredCount} signed up` : 'Open'}
                     </span>
-                    <Link to={`/events/${event.slug}`}>
-                      <Button variant="primary" size="sm" className="font-semibold">
-                        View Details
-                      </Button>
-                    </Link>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="font-semibold"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/events/${event.slug}`);
+                      }}
+                    >
+                      View Details
+                    </Button>
                   </div>
                 </div>
               </div>

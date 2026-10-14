@@ -253,7 +253,7 @@ export const TeamManagementSection: React.FC = () => {
           </div>
         </div>
 
-        {/* 7 Category Tabs */}
+        {/* Simplified 2 Category Tabs: Team Leads & Champions */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-t border-gray-100 pt-3">
           <button
             onClick={() => setActiveCategoryFilter('all')}
@@ -263,21 +263,23 @@ export const TeamManagementSection: React.FC = () => {
                 : 'text-gray-600 hover:text-gray-900 bg-gray-100'
             }`}
           >
-            All Wings ({members.length})
+            All Members ({members.length})
           </button>
-          {categories.map((cat) => (
-            <button
-              key={cat._id}
-              onClick={() => setActiveCategoryFilter(cat._id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                activeCategoryFilter === cat._id
-                  ? 'bg-[#0B132B] text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900 bg-gray-100'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {categories
+            .filter((cat) => cat.isActive !== false)
+            .map((cat) => (
+              <button
+                key={cat._id}
+                onClick={() => setActiveCategoryFilter(cat._id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                  activeCategoryFilter === cat._id
+                    ? 'bg-[#0B132B] text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900 bg-gray-100'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
         </div>
       </div>
 
@@ -426,7 +428,7 @@ export const TeamManagementSection: React.FC = () => {
 
               <div>
                 <label className="block text-[11px] font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                  Team Category (Predefined Wing) *
+                  Team Category *
                 </label>
                 <select
                   required
@@ -434,14 +436,16 @@ export const TeamManagementSection: React.FC = () => {
                   onChange={(e) => setModalCategoryId(e.target.value)}
                   className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-[#F5A623]"
                 >
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {categories
+                    .filter((c) => c.isActive !== false)
+                    .map((c) => (
+                      <option key={c._id} value={c._id}>
+                        {c.name}
+                      </option>
+                    ))}
                 </select>
                 <p className="text-[10px] text-gray-400 mt-1">
-                  Assigned strictly to one of the 7 predefined categories per specification rules.
+                  Assigned to either Team Leads or Champions.
                 </p>
               </div>
 

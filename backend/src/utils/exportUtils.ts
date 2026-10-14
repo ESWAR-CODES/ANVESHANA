@@ -220,3 +220,106 @@ export const generateParticipantXlsx = async (
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
 };
+
+export interface ParticipantExportRecord {
+  referenceNumber: string;
+  eventTitle: string;
+  fullName: string;
+  studentId: string;
+  email: string;
+  phone: string;
+  submittedAt: Date | string;
+  formVersion: number;
+  answersSummary?: string;
+}
+
+/**
+ * Generates CSV for all participants across events with formula injection protection.
+ */
+export const generateAllParticipantsCsv = (records: ParticipantExportRecord[]): string => {
+  const headers = [
+    'Reference Number',
+    'Event Title',
+    'Full Name',
+    'Student ID',
+    'Email',
+    'Phone',
+    'Submission Date (IST)',
+    'Form Version',
+    'Answers Summary',
+  ];
+
+  const lines: string[] = [];
+  lines.push(headers.map(escapeCsvCell).join(','));
+
+  for (const rec of records) {
+    const row = [
+      rec.referenceNumber,
+      rec.eventTitle,
+      rec.fullName,
+      rec.studentId,
+      rec.email,
+      rec.phone,
+      formatDateToIST(rec.submittedAt),
+      `v${rec.formVersion || 1}`,
+      rec.answersSummary || '',
+    ];
+    lines.push(row.map(escapeCsvCell).join(','));
+  }
+
+  return lines.join('\r\n');
+};
+
+/**
+ * Generates XLSX for all participants across events with formula injection protection.
+ */
+export const generateAllParticipantsXlsx = async (records: ParticipantExportRecord[]): Promise<Buffer> => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Anveshana Club Website — Mohan Babu University';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet('All Participants', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+  });
+
+  worksheet.columns = [
+    { header: 'Reference Number', key: 'ref', width: 20 },
+    { header: 'Event Title', key: 'eventTitle', width: 28 },
+    { header: 'Full Name', key: 'fullName', width: 24 },
+    { header: 'Student ID', key: 'studentId', width: 18 },
+    { header: 'Email', key: 'email', width: 28 },
+    { header: 'Phone', key: 'phone', width: 18 },
+    { header: 'Submission Date (IST)', key: 'submittedAt', width: 25 },
+    { header: 'Form Version', key: 'formVersion', width: 14 },
+    { header: 'Answers Summary', key: 'answersSummary', width: 40 },
+  ];
+
+  const headerRow = worksheet.getRow(1);
+  headerRow.height = 28;
+  headerRow.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF0B132B' },
+  };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+
+  for (const rec of records) {
+    const row = worksheet.addRow({
+      ref: sanitizeFormulaInjection(rec.referenceNumber),
+      eventTitle: sanitizeFormulaInjection(rec.eventTitle),
+      fullName: sanitizeFormulaInjection(rec.fullName),
+      studentId: sanitizeFormulaInjection(rec.studentId),
+      email: sanitizeFormulaInjection(rec.email),
+      phone: sanitizeFormulaInjection(rec.phone),
+      submittedAt: formatDateToIST(rec.submittedAt),
+      formVersion: `v${rec.formVersion || 1}`,
+      answersSummary: sanitizeFormulaInjection(rec.answersSummary || ''),
+    });
+    row.height = 20;
+    row.alignment = { vertical: 'middle', horizontal: 'left' };
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(buffer);
+};
