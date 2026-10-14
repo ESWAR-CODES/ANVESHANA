@@ -26,7 +26,13 @@ export interface ClubEvent {
   maxParticipants?: number | null;
   regOpenDate?: string | null;
   regCloseDate?: string | null;
+  formTitle?: string | null;
+  formDescription?: string | null;
   formSchema?: FormFieldConfig[];
+  formDraft?: FormFieldConfig[] | null;
+  formDraftTitle?: string | null;
+  formDraftDescription?: string | null;
+  formStatus?: 'no_form' | 'draft' | 'published' | 'closed';
   formVersion?: number;
   deduplicationRule?: 'studentId' | 'email';
   createdAt: string;
@@ -44,7 +50,8 @@ export type FormFieldType =
   | 'radio'
   | 'checkbox'
   | 'date'
-  | 'url';
+  | 'url'
+  | 'yes_no';
 
 export interface FormFieldValidation {
   min?: number;

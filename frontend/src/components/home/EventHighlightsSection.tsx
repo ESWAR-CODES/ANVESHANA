@@ -6,9 +6,20 @@ import { StatusBadge } from '../common/StatusBadge';
 import { Button } from '../common/Button';
 import { CardSkeleton } from '../common/Skeleton';
 
-export const EventHighlightsSection: React.FC = () => {
+interface EventHighlightsSectionProps {
+  settings?: any;
+}
+
+export const EventHighlightsSection: React.FC<EventHighlightsSectionProps> = ({ settings: propSettings }) => {
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [sectionData, setSectionData] = useState<any>(propSettings?.homeEventsSection || null);
+
+  useEffect(() => {
+    if (propSettings?.homeEventsSection) {
+      setSectionData(propSettings.homeEventsSection);
+    }
+  }, [propSettings]);
 
   useEffect(() => {
     const loadHighlights = async () => {
@@ -29,6 +40,13 @@ export const EventHighlightsSection: React.FC = () => {
     loadHighlights();
   }, []);
 
+  const eyebrow = sectionData?.eyebrow || 'Explore Opportunities';
+  const heading = sectionData?.heading || 'Upcoming Events & Hackathons';
+  const description =
+    sectionData?.description ||
+    'Discover workshops, hackathons, and symposiums hosted on campus. Native registration opens prior to each event.';
+  const ctaText = sectionData?.ctaText || 'View Full Event Catalog →';
+
   const formatDate = (isoString: string) => {
     try {
       return new Date(isoString).toLocaleDateString('en-US', {
@@ -48,19 +66,19 @@ export const EventHighlightsSection: React.FC = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
             <span className="text-xs font-semibold tracking-widest uppercase text-[#F5A623] bg-[#0B132B] px-3 py-1 rounded-full">
-              Explore Opportunities
+              {eyebrow}
             </span>
             <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#0B132B] mt-3">
-              Upcoming Events & Hackathons
+              {heading}
             </h2>
             <p className="text-sm text-gray-600 mt-2 max-w-xl">
-              Discover workshops, hackathons, and symposiums hosted on campus. Native registration opens prior to each event.
+              {description}
             </p>
           </div>
 
           <Link to="/events" className="shrink-0">
             <Button variant="outline" size="sm">
-              View Full Event Catalog →
+              {ctaText}
             </Button>
           </Link>
         </div>

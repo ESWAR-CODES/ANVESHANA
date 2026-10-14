@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { teamService } from '../../services/teamService';
+import { settingsService } from '../../services/settingsService';
 import type { PublicTeamCategoryGroup, TeamMember } from '../../types/team';
 
 interface DisplayCategory {
@@ -124,6 +125,32 @@ export const TeamPage: React.FC = () => {
   const [categories, setCategories] = useState<DisplayCategory[]>(FALLBACK_CATEGORIES);
   const [openCategory, setOpenCategory] = useState<string>('leads');
   const [isLoading, setIsLoading] = useState(false);
+  const [headerContent, setHeaderContent] = useState({
+    eyebrow: 'Leadership & Wings',
+    title: 'Core Team Directory',
+    description: 'Meet the dedicated students across the 7 specialized wings driving Anveshana Club at Mohan Babu University.',
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    settingsService
+      .getPublicSettings()
+      .then((res) => {
+        if (isMounted && res.success && res.data?.pagesContent?.team) {
+          setHeaderContent({
+            eyebrow: res.data.pagesContent.team.eyebrow || 'Leadership & Wings',
+            title: res.data.pagesContent.team.title || 'Core Team Directory',
+            description:
+              res.data.pagesContent.team.description ||
+              'Meet the dedicated students across the 7 specialized wings driving Anveshana Club at Mohan Babu University.',
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -176,13 +203,13 @@ export const TeamPage: React.FC = () => {
       {/* Page Header */}
       <div className="mb-12 text-center max-w-2xl mx-auto">
         <span className="text-xs font-semibold tracking-widest uppercase text-[#F5A623] bg-[#0B132B] px-3 py-1 rounded-full">
-          Leadership & Wings
+          {headerContent.eyebrow}
         </span>
         <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#0B132B] mt-4 mb-3">
-          Core Team Directory
+          {headerContent.title}
         </h1>
         <p className="text-sm text-gray-600 leading-relaxed">
-          Meet the dedicated students across the 7 specialized wings driving Anveshana Club at Mohan Babu University.
+          {headerContent.description}
         </p>
       </div>
 

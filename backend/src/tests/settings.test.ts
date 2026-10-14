@@ -163,4 +163,61 @@ describe('Phase 8: Club Settings & Whitelist Security Specifications', () => {
       expect(res.body.error).toContain('Database service is currently unavailable');
     });
   });
+
+  /* =========================================================================
+     5. DUAL LOGO MANAGEMENT & CMS ENDPOINTS
+     ========================================================================= */
+  describe('Dual Logo Management & CMS Endpoints', () => {
+    it('rejects unauthenticated requests to POST /api/v1/admin/settings/logo/club with 401', async () => {
+      const res = await request(app).post('/api/v1/admin/settings/logo/club');
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rejects student role on POST /api/v1/admin/settings/logo/club with 403', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/settings/logo/club')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${studentToken}`]);
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rejects request without logo file with 400', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/settings/logo/club')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`]);
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('No logo image file was provided');
+    });
+
+    it('rejects unauthenticated requests to POST /api/v1/admin/settings/logo/university with 401', async () => {
+      const res = await request(app).post('/api/v1/admin/settings/logo/university');
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rejects student role on DELETE /api/v1/admin/settings/logo/club with 403', async () => {
+      const res = await request(app)
+        .delete('/api/v1/admin/settings/logo/club')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${studentToken}`]);
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('returns public settings containing full CMS fields and defaults', async () => {
+      const res = await request(app).get('/api/v1/settings');
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.hero).toBeDefined();
+      expect(res.body.data.hero.title).toBe('ANVESHANA');
+      expect(res.body.data.about).toBeDefined();
+      expect(res.body.data.about.heading).toBe('Bridging Computing and Engineering.');
+      expect(res.body.data.stats).toHaveLength(4);
+      expect(res.body.data.navbar).toBeDefined();
+      expect(res.body.data.footer).toBeDefined();
+      expect(res.body.data.pagesContent).toBeDefined();
+      expect(res.body.data.pagesContent.events.title).toBe('Our Events');
+    });
+  });
 });
+

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../components/common/Button';
 import { feedbackService } from '../../services/feedbackService';
+import { settingsService } from '../../services/settingsService';
 import type { FeedbackPublicItem } from '../../types/feedback';
+import type { ClubSettings } from '../../types/settings';
 
 export const FeedbackPage: React.FC = () => {
   const [rating, setRating] = useState<number>(5);
@@ -19,6 +21,7 @@ export const FeedbackPage: React.FC = () => {
   const [averageRating, setAverageRating] = useState<number>(5.0);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [isLoadingPublic, setIsLoadingPublic] = useState(false);
+  const [settings, setSettings] = useState<ClubSettings | null>(null);
 
   const fetchPublicFeedback = async () => {
     setIsLoadingPublic(true);
@@ -40,6 +43,20 @@ export const FeedbackPage: React.FC = () => {
 
   useEffect(() => {
     fetchPublicFeedback();
+
+    let isMounted = true;
+    settingsService
+      .getPublicSettings()
+      .then((res) => {
+        if (isMounted && res.success && res.data) {
+          setSettings(res.data);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,13 +122,14 @@ export const FeedbackPage: React.FC = () => {
       {/* Page Header */}
       <div className="text-center max-w-2xl mx-auto">
         <span className="text-xs font-semibold tracking-widest uppercase text-[#F5A623] bg-[#0B132B] px-3.5 py-1 rounded-full border border-[#F5A623]/20">
-          Continuous Improvement
+          {settings?.pagesContent?.feedback?.eyebrow || 'Continuous Improvement'}
         </span>
         <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#0B132B] mt-4 mb-3">
-          Contact & Community Feedback
+          {settings?.pagesContent?.feedback?.title || 'Contact & Community Feedback'}
         </h1>
         <p className="text-sm text-gray-600 leading-relaxed">
-          Share your ideas, suggest technology workshops, or reach out to the Anveshana executive committee.
+          {settings?.pagesContent?.feedback?.description ||
+            'Share your ideas, suggest technology workshops, or reach out to the Anveshana executive committee.'}
         </p>
       </div>
 
@@ -125,10 +143,10 @@ export const FeedbackPage: React.FC = () => {
                 Institution & Campus
               </span>
               <h2 className="font-serif text-2xl font-bold mt-1 text-[#F8FAFC]">
-                Mohan Babu University
+                {settings?.universityName || 'Mohan Babu University'}
               </h2>
               <p className="text-xs text-gray-400 mt-2 leading-relaxed">
-                Sree Sainath Nagar, Tirupati, Andhra Pradesh - 517102
+                {settings?.campusLocation || 'Sree Sainath Nagar, Tirupati, Andhra Pradesh - 517102'}
               </p>
             </div>
 
@@ -141,7 +159,7 @@ export const FeedbackPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Club Inquiries</p>
-                  <p className="text-xs font-semibold text-white">anveshana@mbu.edu.in</p>
+                  <p className="text-xs font-semibold text-white">{settings?.contactEmail || 'anveshana@mbu.edu.in'}</p>
                 </div>
               </div>
 
@@ -153,7 +171,7 @@ export const FeedbackPage: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Affiliated Schools</p>
-                  <p className="text-xs font-semibold text-white">School of Computing & School of Engineering</p>
+                  <p className="text-xs font-semibold text-white">{settings?.affiliatedSchools || 'School of Computing & School of Engineering'}</p>
                 </div>
               </div>
             </div>
@@ -161,7 +179,8 @@ export const FeedbackPage: React.FC = () => {
             <div className="p-4 bg-[#1C2541]/80 rounded-xl border border-white/5 text-xs text-gray-300">
               <p className="font-semibold text-[#F5A623] mb-1">Privacy Notice</p>
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                Submissions do not require student login. Verified reviews are moderated before being aggregated into public ratings.
+                {settings?.pagesContent?.feedback?.privacyNotice ||
+                  'Submissions do not require student login. Verified reviews are moderated before being aggregated into public ratings.'}
               </p>
             </div>
           </div>

@@ -25,6 +25,22 @@ export const Footer: React.FC = () => {
   }, []);
 
   const socialLinks = settings?.socialLinks;
+  const clubLogo = settings?.logos?.clubLogo;
+  const universityLogo = settings?.logos?.universityLogo;
+  const clubName = settings?.clubName || 'Anveshana Club';
+  const universityName = settings?.universityName || 'Mohan Babu University';
+  const tagline = settings?.tagline || 'Explore · Build · Bring Ideas to Life.';
+  const aboutText =
+    settings?.footer?.aboutText ||
+    settings?.mission ||
+    'The premier central university club bridging students from the School of Computing and the School of Engineering. We foster hands-on engineering, collaborative hackathons, and technical innovation.';
+  const campusLocation = settings?.campusLocation || 'Sree Sainath Nagar, Tirupati, Andhra Pradesh 517102';
+  const affiliatedSchools = settings?.affiliatedSchools || 'School of Computing & School of Engineering';
+  const contactEmail = settings?.contactEmail || 'anveshana@mbu.edu.in';
+  const contactPhone = settings?.contactPhone || '+91 877 223 6711';
+  const copyrightText =
+    settings?.footer?.copyrightText ||
+    `© ${new Date().getFullYear()} ${clubName} · ${universityName}. All rights reserved.`;
 
   return (
     <footer className="bg-[#0B132B] text-[#F8FAFC] border-t border-[#1C2541]">
@@ -33,26 +49,42 @@ export const Footer: React.FC = () => {
           {/* Brand & Mission Column */}
           <div className="md:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#1C2541] border border-[#F5A623]/40 text-[#F5A623] flex items-center justify-center font-serif font-bold text-xl">
-                A
-              </div>
+              {universityLogo?.url ? (
+                <img
+                  src={universityLogo.url}
+                  alt={universityLogo.alt || 'Mohan Babu University Logo'}
+                  className="h-9 w-auto max-w-[120px] object-contain rounded-sm"
+                />
+              ) : null}
+
+              {clubLogo?.url ? (
+                <img
+                  src={clubLogo.url}
+                  alt={clubLogo.alt || 'Anveshana Club Logo'}
+                  className="h-9 w-auto max-w-[120px] object-contain rounded-sm"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#1C2541] border border-[#F5A623]/40 text-[#F5A623] flex items-center justify-center font-serif font-bold text-xl">
+                  A
+                </div>
+              )}
+
               <div>
                 <span className="font-serif text-xl font-bold tracking-wide text-white">
-                  {settings?.clubName || 'Anveshana Club'}
+                  {clubName}
                 </span>
                 <p className="text-xs uppercase tracking-widest text-[#F5A623]">
-                  Mohan Babu University
+                  {universityName}
                 </p>
               </div>
             </div>
 
             <p className="text-xs font-serif italic text-gray-300">
-              "{settings?.tagline || 'Explore · Build · Bring Ideas to Life.'}"
+              "{tagline}"
             </p>
 
             <p className="text-xs text-gray-400 max-w-md leading-relaxed">
-              {settings?.mission ||
-                'The premier central university club bridging students from the School of Computing and the School of Engineering. We foster hands-on engineering, collaborative hackathons, and technical innovation.'}
+              {aboutText}
             </p>
 
             {/* Social Links if configured */}
@@ -163,21 +195,21 @@ export const Footer: React.FC = () => {
             </h4>
             <div className="space-y-2 text-xs text-gray-300 leading-relaxed">
               <p className="text-gray-400">
-                <strong className="text-gray-200">Institution:</strong> Mohan Babu University (MBU)
+                <strong className="text-gray-200">Institution:</strong> {universityName}
               </p>
               <p className="text-gray-400">
-                <strong className="text-gray-200">Location:</strong> Sree Sainath Nagar, Tirupati, Andhra Pradesh 517102
+                <strong className="text-gray-200">Location:</strong> {campusLocation}
               </p>
               <p className="text-gray-400">
-                <strong className="text-gray-200">Email:</strong> {settings?.contactEmail || 'anveshana@mbu.edu.in'}
+                <strong className="text-gray-200">Email:</strong> {contactEmail}
               </p>
-              {settings?.contactPhone && (
+              {contactPhone && (
                 <p className="text-gray-400">
-                  <strong className="text-gray-200">Phone:</strong> {settings.contactPhone}
+                  <strong className="text-gray-200">Phone:</strong> {contactPhone}
                 </p>
               )}
               <p className="text-gray-400">
-                <strong className="text-gray-200">Affiliation:</strong> School of Computing &amp; School of Engineering
+                <strong className="text-gray-200">Affiliation:</strong> {affiliatedSchools}
               </p>
             </div>
           </div>
@@ -186,7 +218,7 @@ export const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-[#1C2541] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
           <p>
-            © {new Date().getFullYear()} Anveshana Club · Mohan Babu University. All rights reserved.
+            {copyrightText}
           </p>
           <div className="flex items-center gap-6">
             <Link to="/events" className="hover:text-gray-400 transition-colors">

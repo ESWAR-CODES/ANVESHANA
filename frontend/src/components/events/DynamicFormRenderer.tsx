@@ -86,6 +86,10 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
         if (field.required && val !== true && (!Array.isArray(val) || val.length === 0)) {
           errors[field.id] = 'You must accept / check this option.';
         }
+      } else if (field.type === 'yes_no') {
+        if (field.required && !val) {
+          errors[field.id] = 'Please select Yes or No.';
+        }
       }
     }
 
@@ -356,6 +360,32 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
                       </span>
                     </label>
                   )}
+                </div>
+              )}
+
+              {/* Yes / No Toggle Group */}
+              {field.type === 'yes_no' && (
+                <div className="flex items-center gap-4 pt-1">
+                  {['Yes', 'No'].map((opt) => (
+                    <label
+                      key={opt}
+                      className={`flex-1 flex items-center justify-center gap-2.5 p-3 rounded-xl border cursor-pointer font-medium text-xs transition-all ${
+                        formData[field.id] === opt
+                          ? 'border-[#F5A623] bg-[#F5A623]/10 text-[#0B132B] font-bold shadow-xs'
+                          : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={field.id}
+                        value={opt}
+                        checked={formData[field.id] === opt}
+                        onChange={() => handleInputChange(field.id, opt)}
+                        className="w-4 h-4 text-[#F5A623] focus:ring-[#F5A623]"
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
                 </div>
               )}
 

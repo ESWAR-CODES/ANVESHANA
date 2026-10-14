@@ -24,7 +24,8 @@ export type FormFieldType =
   | 'radio'
   | 'checkbox'
   | 'date'
-  | 'url';
+  | 'url'
+  | 'yes_no';
 
 export interface FormFieldValidation {
   min?: number;
@@ -66,8 +67,12 @@ export interface IAdministrator extends Document {
 export interface IFormVersionSnapshot {
   version: number;
   schema: FormFieldConfig[];
+  title?: string | null;
+  description?: string | null;
   publishedAt: Date;
 }
+
+export type EventFormStatus = 'no_form' | 'draft' | 'published' | 'closed';
 
 export interface IEvent extends Document {
   _id: Types.ObjectId;
@@ -90,9 +95,15 @@ export interface IEvent extends Document {
   registeredCount: number;
   
   // Dynamic Form Builder & Registration additions
+  formTitle?: string | null;
+  formDescription?: string | null;
   formSchema: FormFieldConfig[];
+  formDraft?: FormFieldConfig[] | null;
+  formDraftTitle?: string | null;
+  formDraftDescription?: string | null;
   formVersion: number;
   formHistory: IFormVersionSnapshot[];
+  formStatus?: EventFormStatus;
   regOpenDate?: Date | null;
   regCloseDate?: Date | null;
   maxParticipants?: number | null;
@@ -105,6 +116,7 @@ export interface IEvent extends Document {
   isRegistrationOpen(): boolean;
   canAcceptRegistrations(currentCount?: number): { allowed: boolean; reason?: string };
   getComputedStatus(): string;
+  getFormStatus(): EventFormStatus;
 }
 
 export interface IRegistration extends Document<string> {
@@ -189,15 +201,125 @@ export interface ISocialLinks {
   youtube?: string | null;
 }
 
+export interface ILogoAsset {
+  url: string;
+  publicId?: string | null;
+  alt?: string;
+}
+
+export interface IClubLogos {
+  clubLogo?: ILogoAsset | null;
+  universityLogo?: ILogoAsset | null;
+}
+
+export interface IHeroSettings {
+  eyebrow?: string;
+  title?: string;
+  tagline?: string;
+  description?: string;
+  primaryCtaText?: string;
+  primaryCtaLink?: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
+  backgroundImage?: { url: string; publicId: string } | null;
+}
+
+export interface IStatItem {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+export interface IPillarItem {
+  title: string;
+  description: string;
+}
+
+export interface IAboutSettings {
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  subDescription?: string;
+  calloutTitle?: string;
+  calloutText?: string;
+  pillars?: IPillarItem[];
+}
+
+export interface IHomeEventsSection {
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  ctaText?: string;
+}
+
+export interface IHomeCtaSection {
+  eyebrow?: string;
+  heading?: string;
+  description?: string;
+  primaryCtaText?: string;
+  primaryCtaLink?: string;
+  secondaryCtaText?: string;
+  secondaryCtaLink?: string;
+}
+
+export interface INavbarLink {
+  name: string;
+  path: string;
+  isVisible: boolean;
+}
+
+export interface INavbarSettings {
+  links?: INavbarLink[];
+  ctaText?: string;
+  ctaLink?: string;
+}
+
+export interface IFooterSettings {
+  aboutText?: string;
+  copyrightText?: string;
+}
+
+export interface IPagesContent {
+  events?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+  };
+  team?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+  };
+  feedback?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+    privacyNotice?: string;
+  };
+}
+
 export interface IClubSettings extends Document {
   _id: Types.ObjectId;
   clubName: string;
+  universityName?: string;
   tagline: string;
   mission: string;
   contactEmail: string;
   contactPhone?: string | null;
+  campusLocation?: string;
+  affiliatedSchools?: string;
   socialLinks: ISocialLinks;
+  logos?: IClubLogos;
+  hero?: IHeroSettings;
+  stats?: IStatItem[];
+  about?: IAboutSettings;
+  homeEventsSection?: IHomeEventsSection;
+  homeCtaSection?: IHomeCtaSection;
+  navbar?: INavbarSettings;
+  footer?: IFooterSettings;
+  pagesContent?: IPagesContent;
   isSingleton: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
+

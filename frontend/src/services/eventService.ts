@@ -43,14 +43,12 @@ export const eventService = {
   },
 
   createAdminEvent: async (payload: FormData | Record<string, any>): Promise<SingleEventResponse> => {
-    const headers = payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
-    const res = await apiClient.post<SingleEventResponse>('/api/v1/admin/events', payload, { headers });
+    const res = await apiClient.post<SingleEventResponse>('/api/v1/admin/events', payload);
     return res.data;
   },
 
   updateAdminEvent: async (id: string, payload: FormData | Record<string, any>): Promise<SingleEventResponse> => {
-    const headers = payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
-    const res = await apiClient.put<SingleEventResponse>(`/api/v1/admin/events/${id}`, payload, { headers });
+    const res = await apiClient.put<SingleEventResponse>(`/api/v1/admin/events/${id}`, payload);
     return res.data;
   },
 
@@ -83,11 +81,45 @@ export const eventService = {
     return res.data;
   },
 
+  getAdminEventForm: async (
+    id: string
+  ): Promise<{ success: boolean; data: any; error: string | null }> => {
+    const res = await apiClient.get(`/api/v1/admin/events/${id}/form`);
+    return res.data;
+  },
+
+  saveEventFormDraft: async (
+    id: string,
+    payload: { formTitle?: string; formDescription?: string; formSchema: any[] }
+  ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
+    const res = await apiClient.put(`/api/v1/admin/events/${id}/form/draft`, payload);
+    return res.data;
+  },
+
   updateEventFormSchema: async (
     id: string,
-    formSchema: any[]
+    formSchema: any[],
+    meta?: { formTitle?: string; formDescription?: string }
   ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
-    const res = await apiClient.put(`/api/v1/admin/events/${id}/form`, { formSchema });
+    const res = await apiClient.put(`/api/v1/admin/events/${id}/form`, {
+      formSchema,
+      formTitle: meta?.formTitle,
+      formDescription: meta?.formDescription,
+    });
+    return res.data;
+  },
+
+  closeEventRegistration: async (
+    id: string
+  ): Promise<{ success: boolean; data: any; error: string | null; message?: string }> => {
+    const res = await apiClient.patch(`/api/v1/admin/events/${id}/form/close`);
+    return res.data;
+  },
+
+  getEventFormVersions: async (
+    id: string
+  ): Promise<{ success: boolean; data: any[]; error: string | null }> => {
+    const res = await apiClient.get(`/api/v1/admin/events/${id}/form/versions`);
     return res.data;
   },
 

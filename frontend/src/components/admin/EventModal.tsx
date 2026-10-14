@@ -99,6 +99,41 @@ export const EventModal: React.FC<EventModalProps> = ({
       return;
     }
 
+    if (title.trim().length < 3) {
+      setErrorMessage('Event title must be at least 3 characters.');
+      return;
+    }
+
+    if (title.trim().length > 100) {
+      setErrorMessage('Event title cannot exceed 100 characters.');
+      return;
+    }
+
+    if (shortDescription.trim().length < 10) {
+      setErrorMessage('Short description must be at least 10 characters.');
+      return;
+    }
+
+    if (shortDescription.trim().length > 200) {
+      setErrorMessage('Short description cannot exceed 200 characters.');
+      return;
+    }
+
+    if (fullDescription.trim().length < 10) {
+      setErrorMessage('Full description must be at least 10 characters.');
+      return;
+    }
+
+    if (maxParticipants.trim() && parseInt(maxParticipants.trim(), 10) < 1) {
+      setErrorMessage('Max capacity must be at least 1 (or leave blank for unlimited).');
+      return;
+    }
+
+    if (isNaN(Date.parse(date))) {
+      setErrorMessage('Please select a valid event date.');
+      return;
+    }
+
     if (!event && !bannerFile) {
       setErrorMessage('Please upload a banner image for the event (Max 2MB).');
       return;
@@ -140,10 +175,19 @@ export const EventModal: React.FC<EventModalProps> = ({
         setErrorMessage(res.error || 'Failed to save event.');
       }
     } catch (err: any) {
-      const errorText =
-        err.response?.status === 503
-          ? 'Database or Cloudinary service is currently unavailable. Please check your configuration.'
-          : err.response?.data?.error || 'An error occurred while saving the event.';
+      console.error('[EventModal] Submission error:', err);
+      let errorText = 'An error occurred while saving the event.';
+      if (err.response?.status === 503) {
+        errorText = err.response?.data?.error || 'Database service or media storage is currently unavailable.';
+      } else if (err.response?.status === 502) {
+        errorText = err.response?.data?.error || 'Media upload service failed. Please verify banner image and Cloudinary credentials.';
+      } else if (err.response?.status === 409) {
+        errorText = err.response?.data?.error || 'An event with this title already exists. Please choose a different title.';
+      } else if (err.response?.status === 400) {
+        errorText = err.response?.data?.error || 'Please review your input fields and try again.';
+      } else if (err.response?.data?.error) {
+        errorText = err.response.data.error;
+      }
       setErrorMessage(errorText);
     } finally {
       setIsSubmitting(false);

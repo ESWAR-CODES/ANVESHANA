@@ -6,11 +6,39 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
 import { CardSkeleton } from '../../components/common/Skeleton';
 import { EmptyState } from '../../components/common/EmptyState';
+import { settingsService } from '../../services/settingsService';
 
 export const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<ClubEvent[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [pageContent, setPageContent] = useState({
+    eyebrow: 'Events & Opportunities',
+    title: 'Our Events',
+    description:
+      'Explore, Learn, Participate and Be a Part of Amazing Events bridging computing innovation and engineering leadership at Mohan Babu University.',
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    settingsService
+      .getPublicSettings()
+      .then((res) => {
+        if (isMounted && res.success && res.data?.pagesContent?.events) {
+          setPageContent({
+            eyebrow: res.data.pagesContent.events.eyebrow || 'Events & Opportunities',
+            title: res.data.pagesContent.events.title || 'Our Events',
+            description:
+              res.data.pagesContent.events.description ||
+              'Explore, Learn, Participate and Be a Part of Amazing Events bridging computing innovation and engineering leadership at Mohan Babu University.',
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Filter States
   const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
@@ -93,13 +121,13 @@ export const EventsPage: React.FC = () => {
       {/* Header Banner */}
       <div className="mb-12 text-center max-w-3xl mx-auto">
         <span className="text-xs font-semibold tracking-widest uppercase text-[#F5A623] bg-[#0B132B] px-3.5 py-1 rounded-full shadow-inner">
-          Events & Opportunities
+          {pageContent.eyebrow}
         </span>
         <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-[#0B132B] mt-4 mb-3">
-          Our Events
+          {pageContent.title}
         </h1>
         <p className="text-sm text-gray-600 leading-relaxed">
-          Explore, Learn, Participate and Be a Part of Amazing Events bridging computing innovation and engineering leadership at Mohan Babu University.
+          {pageContent.description}
         </p>
       </div>
 

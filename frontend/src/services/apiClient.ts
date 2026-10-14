@@ -10,6 +10,14 @@ export const apiClient = axios.create({
   },
 });
 
+// Request interceptor to handle FormData multipart boundaries automatically
+apiClient.interceptors.request.use((config) => {
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  return config;
+});
+
 // Response interceptor to catch unauthorized API calls
 apiClient.interceptors.response.use(
   (response) => response,

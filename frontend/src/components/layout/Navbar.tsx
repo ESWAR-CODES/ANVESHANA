@@ -1,12 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
+import { settingsService } from '../../services/settingsService';
+import type { ClubSettings } from '../../types/settings';
 
 export const Navbar: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [settings, setSettings] = useState<ClubSettings | null>(null);
+  const [clubLogoError, setClubLogoError] = useState(false);
+  const [univLogoError, setUnivLogoError] = useState(false);
   const location = useLocation();
 
   const isHomePage = location.pathname === '/';
+
+  useEffect(() => {
+    let isMounted = true;
+    settingsService
+      .getPublicSettings()
+      .then((res) => {
+        if (isMounted && res.success && res.data) {
+          setSettings(res.data);
+        }
+      })
+      .catch(() => {
+        // Fallback gracefully
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -42,15 +65,27 @@ export const Navbar: React.FC = () => {
   // Navbar background logic: Transparent on top of homepage; solid navy on scroll or sub-pages
   const navBackgroundClass =
     isScrolled || !isHomePage
-      ? 'bg-[#0B132B]/95 backdrop-blur-md border-b border-[#1C2541] shadow-md py-3.5'
-      : 'bg-transparent border-b border-transparent py-5';
+      ? 'bg-[#0B132B]/95 backdrop-blur-md border-b border-[#1C2541] shadow-md py-3'
+      : 'bg-transparent border-b border-transparent py-4 sm:py-5';
 
-  const navLinks = [
+  const defaultNavLinks = [
     { name: 'Home', path: '/' },
     { name: 'Events', path: '/events' },
     { name: 'Team', path: '/team' },
     { name: 'Feedback', path: '/feedback' },
   ];
+
+  const configuredLinks = settings?.navbar?.links?.filter((l) => l.isVisible !== false);
+  const navLinks = configuredLinks && configuredLinks.length > 0 ? configuredLinks : defaultNavLinks;
+
+  const ctaText = settings?.navbar?.ctaText || 'Explore Events';
+  const ctaLink = settings?.navbar?.ctaLink || '/events';
+
+  const clubLogo = settings?.logos?.clubLogo;
+  const universityLogo = settings?.logos?.universityLogo;
+
+  const clubName = settings?.clubName || 'Anveshana';
+  const universityName = settings?.universityName || 'Mohan Babu University';
 
   return (
     <header
@@ -58,21 +93,47 @@ export const Navbar: React.FC = () => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <nav className="flex items-center justify-between" aria-label="Main Navigation">
-          {/* Brand Identity */}
+          {/* Brand Identity / Dual Logos */}
           <Link
             to="/"
-            className="flex items-center gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623] rounded-lg p-1"
-            aria-label="Anveshana Club Homepage"
+            className="flex items-center gap-2.5 sm:gap-3 group focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] rounded-lg p-1"
+            aria-label={`${clubName} Homepage`}
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#1C2541] border border-[#F5A623]/40 text-[#F5A623] flex items-center justify-center font-serif font-bold text-lg sm:text-xl shadow-inner group-hover:border-[#F5A623] transition-colors">
-              A
-            </div>
+            {/* University Logo if present */}
+            {universityLogo?.url && !univLogoError ? (
+              <img
+                src={universityLogo.url}
+                alt={universityLogo.alt || 'Mohan Babu University Logo'}
+                onError={() => setUnivLogoError(true)}
+                className="h-8 sm:h-9 w-auto max-w-[120px] object-contain rounded-sm"
+              />
+            ) : null}
+
+            {/* Subtle vertical separator if university logo is shown */}
+            {universityLogo?.url && !univLogoError && (
+              <span className="hidden sm:inline-block w-px h-6 bg-white/20" />
+            )}
+
+            {/* Club Logo if present, otherwise stylized crest */}
+            {clubLogo?.url && !clubLogoError ? (
+              <img
+                src={clubLogo.url}
+                alt={clubLogo.alt || 'Anveshana Club Logo'}
+                onError={() => setClubLogoError(true)}
+                className="h-8 sm:h-9 w-auto max-w-[120px] object-contain rounded-sm"
+              />
+            ) : (
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#1C2541] border border-[#F5A623]/40 text-[#F5A623] flex items-center justify-center font-serif font-bold text-base sm:text-lg shadow-inner group-hover:border-[#F5A623] transition-colors">
+                A
+              </div>
+            )}
+
             <div className="flex flex-col">
-              <span className="font-serif text-lg sm:text-xl font-bold tracking-wide text-[#F8FAFC] group-hover:text-[#F5A623] transition-colors">
-                Anveshana
+              <span className="font-serif text-base sm:text-lg font-bold tracking-wide text-[#F8FAFC] group-hover:text-[#F5A623] transition-colors leading-tight">
+                {clubName}
               </span>
-              <span className="text-[10px] tracking-widest uppercase text-gray-300 -mt-0.5">
-                Mohan Babu University
+              <span className="text-[9px] sm:text-[10px] tracking-widest uppercase text-gray-300">
+                {universityName}
               </span>
             </div>
           </Link>
@@ -85,7 +146,7 @@ export const Navbar: React.FC = () => {
                 to={link.path}
                 end={link.path === '/'}
                 className={({ isActive }) =>
-                  `px-3.5 py-1.5 rounded-lg text-sm font-medium tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623] ${
+                  `px-3.5 py-1.5 rounded-lg text-sm font-medium tracking-wide transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] ${
                     isActive
                       ? 'text-[#F5A623] bg-[#1C2541]/70 font-semibold shadow-xs'
                       : 'text-gray-200 hover:text-white hover:bg-white/10'
@@ -98,10 +159,10 @@ export const Navbar: React.FC = () => {
 
             {/* Quick Action Button */}
             <Link
-              to="/events"
-              className="ml-3 px-4 py-2 bg-[#F5A623] hover:bg-[#e0961b] active:bg-[#cc8715] text-[#0B132B] font-semibold text-xs tracking-wider uppercase rounded-lg shadow-sm transition-all hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623]"
+              to={ctaLink}
+              className="ml-3 px-4 py-2 bg-[#F5A623] hover:bg-[#e0961b] active:bg-[#cc8715] text-[#0B132B] font-semibold text-xs tracking-wider uppercase rounded-lg shadow-sm transition-all hover:shadow focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623]"
             >
-              Explore Events
+              {ctaText}
             </Link>
           </div>
 
@@ -109,7 +170,7 @@ export const Navbar: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-200 hover:text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5A623] cursor-pointer"
+            className="md:hidden p-2 rounded-lg text-gray-200 hover:text-white hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#F5A623] cursor-pointer"
             aria-expanded={isMobileMenuOpen}
             aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
@@ -129,7 +190,7 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 top-[60px] sm:top-[68px] z-40 bg-[#0B132B]/98 backdrop-blur-xl border-t border-[#1C2541] px-6 py-8 flex flex-col justify-between">
+        <div className="md:hidden fixed inset-0 top-[56px] sm:top-[64px] z-40 bg-[#0B132B]/98 backdrop-blur-xl border-t border-[#1C2541] px-6 py-8 flex flex-col justify-between">
           <div className="flex flex-col space-y-2">
             {navLinks.map((link) => (
               <NavLink
@@ -152,14 +213,14 @@ export const Navbar: React.FC = () => {
 
           <div className="pt-6 border-t border-[#1C2541] space-y-4">
             <Link
-              to="/events"
+              to={ctaLink}
               onClick={() => setIsMobileMenuOpen(false)}
               className="block w-full py-3 px-4 bg-[#F5A623] text-[#0B132B] font-semibold text-center rounded-xl shadow-sm text-sm"
             >
-              Explore All Events
+              {ctaText}
             </Link>
             <p className="text-center text-xs text-gray-400">
-              Mohan Babu University · School of Computing & Engineering
+              {universityName} · {settings?.affiliatedSchools || 'School of Computing & Engineering'}
             </p>
           </div>
         </div>

@@ -13,6 +13,7 @@ export const ALLOWED_FIELD_TYPES: FormFieldType[] = [
   'checkbox',
   'date',
   'url',
+  'yes_no',
 ];
 
 export interface FormValidationResult {
@@ -284,6 +285,27 @@ export const validateRegistrationAnswers = (
           return {
             isValid: false,
             error: `Field "${field.label}" must be a boolean or selected options list.`,
+          };
+        }
+        break;
+      }
+
+      case 'yes_no': {
+        if (
+          typeof rawVal === 'boolean' ||
+          rawVal === 'true' ||
+          rawVal === 'false' ||
+          rawVal === 'yes' ||
+          rawVal === 'no' ||
+          rawVal === 'Yes' ||
+          rawVal === 'No'
+        ) {
+          const boolVal = rawVal === true || rawVal === 'true' || String(rawVal).toLowerCase() === 'yes';
+          sanitizedAnswers[field.id] = boolVal ? 'Yes' : 'No';
+        } else {
+          return {
+            isValid: false,
+            error: `Field "${field.label}" must be answered with Yes or No.`,
           };
         }
         break;

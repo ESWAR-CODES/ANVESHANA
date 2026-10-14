@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import app from '../server';
 import { signToken, AUTH_COOKIE_NAME } from '../utils/token';
 import { Event } from '../models/Event';
+import * as cloudinaryConfig from '../config/cloudinary';
 
 describe('Event API & Lifecycle Specifications', () => {
   const adminToken = signToken({
@@ -115,6 +116,40 @@ describe('Event API & Lifecycle Specifications', () => {
       expect(res.status).toBe(400);
       expect(res.body.error).toContain('Invalid file type');
     });
+
+    it('rejects short descriptions shorter than 10 characters with 400', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/events')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`])
+        .send({
+          title: 'Full Valid Title',
+          shortDescription: 'Too short',
+          fullDescription: 'Valid full description that is long enough.',
+          eventDate: new Date().toISOString(),
+          time: '10:00 AM',
+          venue: 'Auditorium Block A',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Short description must be at least 10 characters');
+    });
+
+    it('rejects invalid event dates with 400', async () => {
+      const res = await request(app)
+        .post('/api/v1/admin/events')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`])
+        .send({
+          title: 'Full Valid Title',
+          shortDescription: 'Valid short description for test.',
+          fullDescription: 'Valid full description that is long enough.',
+          eventDate: 'not-a-valid-date',
+          time: '10:00 AM',
+          venue: 'Auditorium Block A',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toContain('Invalid event date');
+    });
   });
 
   describe('Computed Registration State & Lifecycle Rules', () => {
@@ -190,6 +225,135 @@ describe('Event API & Lifecycle Specifications', () => {
       expect(openEvent.getComputedStatus()).toBe('open');
       expect(openEvent.isRegistrationOpen()).toBe(true);
       expect(openEvent.canAcceptRegistrations().allowed).toBe(true);
+    });
+  });
+
+  describe('Admin Event Creation & Rollback Operations', () => {
+    it('creates an event successfully and returns the saved document with slug', async () => {
+      const mockCreated = {
+        _id: '670b8f1023456789abcdef99',
+        title: 'New Innovation Summit',
+        slug: 'new-innovation-summit',
+        category: 'Summit',
+        shortDescription: 'Short description for the summit.',
+        fullDescription: 'Full detailed description for innovation summit.',
+        bannerMedia: { publicId: 'test_banner', url: 'https://example.com/banner.jpg' },
+        eventDate: new Date('2026-11-20T10:00:00Z'),
+        time: '10:00 AM',
+        venue: 'Auditorium Block A',
+        maxParticipants: null,
+        status: 'draft',
+        isPublished: false,
+      };
+
+      vi.spyOn(Event, 'findOne').mockResolvedValueOnce(null);
+      vi.spyOn(Event, 'create').mockResolvedValueOnce(mockCreated as any);
+
+      const res = await request(app)
+        .post('/api/v1/admin/events')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`])
+        .send({
+          title: 'New Innovation Summit',
+          category: 'Summit',
+          shortDescription: 'Short description for the summit.',
+          fullDescription: 'Full detailed description for innovation summit.',
+          eventDate: '2026-11-20T10:00:00Z',
+          time: '10:00 AM',
+          venue: 'Auditorium Block A',
+          bannerMedia: { publicId: 'test_banner', url: 'https://example.com/banner.jpg' },
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.slug).toBe('new-innovation-summit');
+      expect(res.body.data.title).toBe('New Innovation Summit');
+    });
+
+    it('cleans up Cloudinary asset when database creation fails (rollback verification)', async () => {
+      vi.spyOn(Event, 'findOne').mockResolvedValueOnce(null);
+      vi.spyOn(Event, 'create').mockRejectedValueOnce(new Error('Simulated database write error'));
+
+      const deleteSpy = vi.spyOn(cloudinaryConfig, 'deleteCloudinaryImage').mockResolvedValueOnce(true);
+
+      const res = await request(app)
+        .post('/api/v1/admin/events')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`])
+        .send({
+          title: 'Rollback Summit',
+          category: 'Summit',
+          shortDescription: 'Short description for rollback.',
+          fullDescription: 'Full detailed description for rollback testing.',
+          eventDate: '2026-11-20T10:00:00Z',
+          time: '10:00 AM',
+          venue: 'Auditorium Block A',
+          bannerMedia: { publicId: 'cloudinary_to_delete', url: 'https://example.com/banner.jpg' },
+        });
+
+      expect(res.status).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toContain('Simulated database write error');
+      expect(deleteSpy).toHaveBeenCalledWith('cloudinary_to_delete');
+    });
+
+    it('generates a unique slug with incrementing counter when collision occurs', async () => {
+      vi.spyOn(Event, 'findOne')
+        .mockResolvedValueOnce({ _id: 'existing1', slug: 'colliding-event' } as any)
+        .mockResolvedValueOnce(null);
+
+      const createSpy = vi.spyOn(Event, 'create').mockImplementationOnce(async (data: any) => ({
+        _id: 'new_id',
+        ...data,
+      }));
+
+      const res = await request(app)
+        .post('/api/v1/admin/events')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`])
+        .send({
+          title: 'Colliding Event',
+          shortDescription: 'Short description for collision.',
+          fullDescription: 'Full detailed description for collision.',
+          eventDate: '2026-11-20T10:00:00Z',
+          time: '10:00 AM',
+          venue: 'Auditorium Block A',
+          bannerMedia: { publicId: 'banner_id', url: 'https://example.com/banner.jpg' },
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slug: 'colliding-event-2',
+        })
+      );
+    });
+
+    it('supports unlimited capacity with maxParticipants as null', async () => {
+      vi.spyOn(Event, 'findOne').mockResolvedValueOnce(null);
+      const createSpy = vi.spyOn(Event, 'create').mockImplementationOnce(async (data: any) => ({
+        _id: 'unlimited_id',
+        ...data,
+      }));
+
+      const res = await request(app)
+        .post('/api/v1/admin/events')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${adminToken}`])
+        .send({
+          title: 'Unlimited Hackathon',
+          shortDescription: 'Short description for unlimited.',
+          fullDescription: 'Full detailed description for unlimited capacity.',
+          eventDate: '2026-11-20T10:00:00Z',
+          time: '10:00 AM',
+          venue: 'Auditorium Block A',
+          maxParticipants: null,
+          bannerMedia: { publicId: 'banner_id', url: 'https://example.com/banner.jpg' },
+        });
+
+      expect(res.status).toBe(201);
+      expect(createSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          maxParticipants: null,
+        })
+      );
     });
   });
 });

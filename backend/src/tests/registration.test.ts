@@ -139,6 +139,30 @@ describe('Phase 6: Dynamic Form Builder & Native Registration Specifications', (
       expect(res.error).toContain('unsupported type');
     });
 
+    it('accepts and normalizes yes_no field definitions and answers', () => {
+      const yesNoSchema: FormFieldConfig[] = [
+        {
+          id: 'field_laptop',
+          type: 'yes_no',
+          label: 'Do you have a personal laptop?',
+          required: true,
+          enabled: true,
+          order: 0,
+        },
+      ];
+      const schemaRes = validateFormSchemaDefinition(yesNoSchema);
+      expect(schemaRes.isValid).toBe(true);
+      expect(schemaRes.sanitizedSchema?.[0].type).toBe('yes_no');
+
+      const answerResYes = validateRegistrationAnswers(yesNoSchema, { field_laptop: 'Yes' });
+      expect(answerResYes.isValid).toBe(true);
+      expect(answerResYes.sanitizedAnswers?.field_laptop).toBe('Yes');
+
+      const answerResNo = validateRegistrationAnswers(yesNoSchema, { field_laptop: false });
+      expect(answerResNo.isValid).toBe(true);
+      expect(answerResNo.sanitizedAnswers?.field_laptop).toBe('No');
+    });
+
     it('accepts valid answers matching all supported field types', () => {
       const validAnswers = {
         field_name: 'Aditya Varma',
@@ -349,6 +373,36 @@ describe('Phase 6: Dynamic Form Builder & Native Registration Specifications', (
       expect(res.status).toBe(503);
       expect(res.body.success).toBe(false);
       expect(res.body.error).toContain('Database service is currently unavailable');
+    });
+
+    it('rejects unauthenticated requests to GET /api/v1/admin/events/:id/form with 401', async () => {
+      const res = await request(app).get('/api/v1/admin/events/670b8f1023456789abcdef99/form');
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('rejects non-admin requests to GET /api/v1/admin/events/:id/form with 403', async () => {
+      const res = await request(app)
+        .get('/api/v1/admin/events/670b8f1023456789abcdef99/form')
+        .set('Cookie', [`${AUTH_COOKIE_NAME}=${studentToken}`]);
+      expect(res.status).toBe(403);
+    });
+
+    it('rejects unauthenticated requests to PUT /api/v1/admin/events/:id/form/draft with 401', async () => {
+      const res = await request(app)
+        .put('/api/v1/admin/events/670b8f1023456789abcdef99/form/draft')
+        .send({ formSchema: testSchema });
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects unauthenticated requests to PATCH /api/v1/admin/events/:id/form/close with 401', async () => {
+      const res = await request(app).patch('/api/v1/admin/events/670b8f1023456789abcdef99/form/close');
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects unauthenticated requests to GET /api/v1/admin/events/:id/form/versions with 401', async () => {
+      const res = await request(app).get('/api/v1/admin/events/670b8f1023456789abcdef99/form/versions');
+      expect(res.status).toBe(401);
     });
   });
 

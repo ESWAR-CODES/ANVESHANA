@@ -35,7 +35,7 @@ const generateUniqueSlug = async (title: string, excludeId?: string): Promise<st
   let counter = 1;
 
   while (true) {
-    const query: any = { slug: candidate, isDeleted: false };
+    const query: any = { slug: candidate };
     if (excludeId) {
       query._id = { $ne: excludeId };
     }
@@ -258,6 +258,7 @@ export const getAdminEvents = async (req: Request, res: Response): Promise<void>
       return {
         ...event,
         computedStatus: doc.getComputedStatus(),
+        formStatus: doc.getFormStatus(),
       };
     });
 
@@ -318,6 +319,8 @@ export const getAdminEventById = async (req: Request, res: Response): Promise<vo
  * POST /api/v1/admin/events
  */
 export const createAdminEvent = async (req: Request, res: Response): Promise<void> => {
+  let bannerMedia: { publicId: string; url: string } | undefined;
+
   try {
     const parseResult = eventInputSchema.safeParse(req.body);
     if (!parseResult.success) {
@@ -332,25 +335,71 @@ export const createAdminEvent = async (req: Request, res: Response): Promise<voi
     const input = parseResult.data;
 
     // Handle banner image
-    let bannerMedia: { publicId: string; url: string };
-
     if (req.file) {
       if (!isCloudinaryConfigured()) {
         res.status(503).json({
           success: false,
           data: null,
-          error: 'Cloudinary media upload service is not configured in server environment.',
+          error: 'Cloudinary media upload service is not configured in server environment. Please set CLOUDINARY credentials in .env.',
         });
         return;
       }
-      bannerMedia = await uploadImageBuffer(req.file.buffer, 'anveshana/banners');
-    } else if (req.body.bannerMedia && req.body.bannerMedia.publicId && req.body.bannerMedia.url) {
-      bannerMedia = req.body.bannerMedia;
-    } else {
+
+      try {
+        bannerMedia = await uploadImageBuffer(req.file.buffer, 'anveshana/banners');
+      } catch (uploadError: any) {
+        console.error('[Event Creation] Cloudinary banner upload failed:', uploadError);
+        const errMsg = uploadError?.message || 'Upload stream rejected by Cloudinary';
+        const isForbidden =
+          uploadError?.http_code === 403 ||
+          errMsg.includes('403') ||
+          errMsg.includes('permissions') ||
+          errMsg.includes('forbidden');
+        const isUnauthorized = uploadError?.http_code === 401 || errMsg.includes('401');
+
+        let userFriendlyError = `Banner upload failed: ${errMsg}`;
+        if (isForbidden || isUnauthorized) {
+          userFriendlyError =
+            'Banner upload rejected by Cloudinary: Missing read/write permissions or invalid API credentials. Please verify Cloudinary environment credentials.';
+        }
+
+        res.status(502).json({
+          success: false,
+          data: null,
+          error: userFriendlyError,
+        });
+        return;
+      }
+    } else if (req.body.bannerMedia) {
+      let bm = req.body.bannerMedia;
+      if (typeof bm === 'string') {
+        try {
+          bm = JSON.parse(bm);
+        } catch {
+          bm = null;
+        }
+      }
+      if (bm && typeof bm.publicId === 'string' && typeof bm.url === 'string') {
+        bannerMedia = { publicId: bm.publicId, url: bm.url };
+      }
+    }
+
+    if (!bannerMedia) {
       res.status(400).json({
         success: false,
         data: null,
         error: 'Event banner image is required. Please upload a JPEG, PNG, or WebP file.',
+      });
+      return;
+    }
+
+    // Verify database connectivity before database mutations
+    const dbStatus = getDbStatus();
+    if (!dbStatus.connected && process.env.NODE_ENV !== 'test') {
+      res.status(503).json({
+        success: false,
+        data: null,
+        error: 'Database service is currently unavailable. MongoDB is not connected.',
       });
       return;
     }
@@ -388,11 +437,46 @@ export const createAdminEvent = async (req: Request, res: Response): Promise<voi
       data: event,
       error: null,
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Event Creation] Database save failed:', error);
+
+    // Clean up uploaded Cloudinary image if database creation failed
+    if (bannerMedia?.publicId) {
+      await deleteCloudinaryImage(bannerMedia.publicId).catch(() => {});
+    }
+
+    if (error?.code === 11000) {
+      res.status(409).json({
+        success: false,
+        data: null,
+        error: 'An event with this title or slug already exists in the database. Please provide a distinct title.',
+      });
+      return;
+    }
+
+    if (error?.name === 'ValidationError') {
+      const messages = Object.values(error.errors || {})
+        .map((e: any) => e.message)
+        .join('. ');
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: messages || 'Event validation failed.',
+      });
+      return;
+    }
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+        ? error
+        : error?.message || 'Failed to create event in database';
+
     res.status(500).json({
       success: false,
       data: null,
-      error: error instanceof Error ? error.message : 'Failed to create event',
+      error: message,
     });
   }
 };
@@ -402,6 +486,16 @@ export const createAdminEvent = async (req: Request, res: Response): Promise<voi
  * PUT /api/v1/admin/events/:id
  */
 export const updateAdminEvent = async (req: Request, res: Response): Promise<void> => {
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected && process.env.NODE_ENV !== 'test') {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable. MongoDB is not connected.',
+    });
+    return;
+  }
+
   try {
     const { id } = req.params;
     const event = await Event.findOne({ _id: id, isDeleted: false });
@@ -437,12 +531,22 @@ export const updateAdminEvent = async (req: Request, res: Response): Promise<voi
         });
         return;
       }
-      const newBanner = await uploadImageBuffer(req.file.buffer, 'anveshana/banners');
-      // Clean up previous Cloudinary banner asset safely
-      if (event.bannerMedia?.publicId) {
-        await deleteCloudinaryImage(event.bannerMedia.publicId);
+      try {
+        const newBanner = await uploadImageBuffer(req.file.buffer, 'anveshana/banners');
+        // Clean up previous Cloudinary banner asset safely
+        if (event.bannerMedia?.publicId) {
+          await deleteCloudinaryImage(event.bannerMedia.publicId).catch(() => {});
+        }
+        event.bannerMedia = newBanner;
+      } catch (uploadError: any) {
+        console.error('[Event Update] Cloudinary banner upload failed:', uploadError);
+        res.status(502).json({
+          success: false,
+          data: null,
+          error: `Banner upload failed: ${uploadError?.message || 'Media service error'}`,
+        });
+        return;
       }
-      event.bannerMedia = newBanner;
     }
 
     if (updates.title && updates.title !== event.title) {
@@ -478,11 +582,33 @@ export const updateAdminEvent = async (req: Request, res: Response): Promise<voi
       data: event,
       error: null,
     });
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[Event Update] Save failed:', error);
+    if (error?.code === 11000) {
+      res.status(409).json({
+        success: false,
+        data: null,
+        error: 'An event with this title or slug already exists in the database.',
+      });
+      return;
+    }
+
+    if (error?.name === 'ValidationError') {
+      const messages = Object.values(error.errors || {})
+        .map((e: any) => e.message)
+        .join('. ');
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: messages || 'Event validation failed.',
+      });
+      return;
+    }
+
     res.status(500).json({
       success: false,
       data: null,
-      error: 'Failed to update event',
+      error: error instanceof Error ? error.message : 'Failed to update event',
     });
   }
 };
@@ -639,11 +765,10 @@ export const deleteAdminEvent = async (req: Request, res: Response): Promise<voi
 };
 
 /**
- * Admin: Update event dynamic form schema.
- * Enforces immutable form versioning and historical snapshotting.
- * PUT /api/v1/admin/events/:id/form
+ * Admin: Retrieve full form definition including draft, published schema, and version history.
+ * GET /api/v1/admin/events/:id/form
  */
-export const updateEventFormSchema = async (req: Request, res: Response): Promise<void> => {
+export const getAdminEventForm = async (req: Request, res: Response): Promise<void> => {
   const dbStatus = getDbStatus();
   if (!dbStatus.connected) {
     res.status(503).json({
@@ -656,9 +781,67 @@ export const updateEventFormSchema = async (req: Request, res: Response): Promis
 
   try {
     const { id } = req.params;
-    const { formSchema } = req.body;
+    const event = await Event.findOne({ _id: id, isDeleted: false });
 
-    const validationResult = validateFormSchemaDefinition(formSchema);
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        eventId: event._id,
+        eventTitle: event.title,
+        formTitle: event.formTitle || `${event.title} Registration`,
+        formDescription: event.formDescription || '',
+        formVersion: event.formVersion || 1,
+        formSchema: event.formSchema || [],
+        formDraft: event.formDraft || null,
+        formDraftTitle: event.formDraftTitle || '',
+        formDraftDescription: event.formDraftDescription || '',
+        formStatus: event.getFormStatus(),
+        isRegistrationOpen: event.isRegistrationOpen(),
+        computedStatus: event.getComputedStatus(),
+        registeredCount: event.registeredCount || 0,
+        maxParticipants: event.maxParticipants || null,
+        formHistory: event.formHistory || [],
+      },
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to retrieve event registration form',
+    });
+  }
+};
+
+/**
+ * Admin: Save registration form as a working draft without publishing.
+ * PUT /api/v1/admin/events/:id/form/draft
+ */
+export const saveAdminEventFormDraft = async (req: Request, res: Response): Promise<void> => {
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const { id } = req.params;
+    const { formTitle, formDescription, formSchema } = req.body;
+
+    const validationResult = validateFormSchemaDefinition(formSchema || []);
     if (!validationResult.isValid || !validationResult.sanitizedSchema) {
       res.status(400).json({
         success: false,
@@ -678,7 +861,95 @@ export const updateEventFormSchema = async (req: Request, res: Response): Promis
       return;
     }
 
+    event.formDraft = validationResult.sanitizedSchema;
+    if (typeof formTitle === 'string') event.formDraftTitle = formTitle.trim();
+    if (typeof formDescription === 'string') event.formDraftDescription = formDescription.trim();
+
+    if (!event.formSchema || event.formSchema.length === 0) {
+      event.formStatus = 'draft';
+    }
+
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        eventId: event._id,
+        formDraft: event.formDraft,
+        formDraftTitle: event.formDraftTitle,
+        formDraftDescription: event.formDraftDescription,
+        formStatus: event.getFormStatus(),
+      },
+      message: 'Registration form draft saved successfully. Ready to publish when finalized.',
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to save registration form draft',
+    });
+  }
+};
+
+/**
+ * Admin: Update and publish event dynamic form schema.
+ * Enforces immutable form versioning and historical snapshotting.
+ * PUT /api/v1/admin/events/:id/form
+ */
+export const updateEventFormSchema = async (req: Request, res: Response): Promise<void> => {
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const { id } = req.params;
+    const { formSchema, formTitle, formDescription } = req.body;
+
+    const validationResult = validateFormSchemaDefinition(formSchema);
+    if (!validationResult.isValid || !validationResult.sanitizedSchema) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: validationResult.error || 'Invalid form schema configuration',
+      });
+      return;
+    }
+
+    if (validationResult.sanitizedSchema.length === 0) {
+      res.status(400).json({
+        success: false,
+        data: null,
+        error: 'A published registration form must contain at least one question.',
+      });
+      return;
+    }
+
+    const event = await Event.findOne({ _id: id, isDeleted: false });
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
     const sanitizedSchema = validationResult.sanitizedSchema;
+    const newTitle =
+      typeof formTitle === 'string' && formTitle.trim()
+        ? formTitle.trim()
+        : event.formTitle || `${event.title} Registration`;
+    const newDescription =
+      typeof formDescription === 'string'
+        ? formDescription.trim()
+        : event.formDescription || '';
 
     // Compare new schema against current event.formSchema
     const currentSerialized = JSON.stringify(
@@ -701,7 +972,7 @@ export const updateEventFormSchema = async (req: Request, res: Response): Promis
         validation: f.validation,
       }))
     );
-    const hasChanged = currentSerialized !== newSerialized;
+    const hasChanged = currentSerialized !== newSerialized || event.formSchema.length === 0;
 
     if (hasChanged) {
       // If formHistory is empty and we had a previous non-empty schema, snapshot v1 first
@@ -710,14 +981,23 @@ export const updateEventFormSchema = async (req: Request, res: Response): Promis
           {
             version: event.formVersion || 1,
             schema: event.formSchema,
+            title: event.formTitle || event.title,
+            description: event.formDescription || '',
             publishedAt: new Date(),
           },
         ];
       }
 
-      const nextVersion = (event.formVersion || 1) + 1;
+      const nextVersion = event.formSchema.length > 0 ? (event.formVersion || 1) + 1 : (event.formVersion || 1);
       event.formVersion = nextVersion;
       event.formSchema = sanitizedSchema;
+      event.formTitle = newTitle;
+      event.formDescription = newDescription;
+
+      // Clear draft since it is now published
+      event.formDraft = null;
+      event.formDraftTitle = '';
+      event.formDraftDescription = '';
 
       if (!event.formHistory) {
         event.formHistory = [];
@@ -725,9 +1005,20 @@ export const updateEventFormSchema = async (req: Request, res: Response): Promis
       event.formHistory.push({
         version: nextVersion,
         schema: sanitizedSchema,
+        title: newTitle,
+        description: newDescription,
         publishedAt: new Date(),
       });
 
+      // Ensure form status is published
+      event.formStatus = 'published';
+
+      await event.save();
+    } else {
+      // Just update metadata if questions didn't change
+      event.formTitle = newTitle;
+      event.formDescription = newDescription;
+      event.formDraft = null;
       await event.save();
     }
 
@@ -735,20 +1026,105 @@ export const updateEventFormSchema = async (req: Request, res: Response): Promis
       success: true,
       data: {
         id: event._id,
+        formTitle: event.formTitle,
+        formDescription: event.formDescription,
         formVersion: event.formVersion,
         formSchema: event.formSchema,
+        formStatus: event.getFormStatus(),
         versionIncremented: hasChanged,
       },
       error: null,
-      message: hasChanged
-        ? `Form schema updated and published as version ${event.formVersion}.`
-        : 'Form schema saved with no changes.',
+      message: `Form schema published as version ${event.formVersion}.`,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       data: null,
       error: 'Failed to update event registration form',
+    });
+  }
+};
+
+/**
+ * Admin: Close registration for an event.
+ * PATCH /api/v1/admin/events/:id/form/close
+ */
+export const closeAdminEventRegistration = async (req: Request, res: Response): Promise<void> => {
+  const dbStatus = getDbStatus();
+  if (!dbStatus.connected) {
+    res.status(503).json({
+      success: false,
+      data: null,
+      error: 'Database service is currently unavailable.',
+    });
+    return;
+  }
+
+  try {
+    const { id } = req.params;
+    const event = await Event.findOne({ _id: id, isDeleted: false });
+
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
+    event.status = 'closed';
+    event.formStatus = 'closed';
+    await event.save();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: event._id,
+        status: event.status,
+        formStatus: event.getFormStatus(),
+        isRegistrationOpen: false,
+      },
+      message: `Registration has been closed for "${event.title}".`,
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to close event registration',
+    });
+  }
+};
+
+/**
+ * Admin: Retrieve published form version history snapshots.
+ * GET /api/v1/admin/events/:id/form/versions
+ */
+export const getAdminEventFormVersions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findOne({ _id: id, isDeleted: false });
+
+    if (!event) {
+      res.status(404).json({
+        success: false,
+        data: null,
+        error: 'Event not found',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: event.formHistory || [],
+      error: null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      data: null,
+      error: 'Failed to retrieve form version history',
     });
   }
 };

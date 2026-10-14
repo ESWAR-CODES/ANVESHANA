@@ -42,6 +42,4 @@ const EventGallerySchema = new Schema<IEventGallery>(
   }
 );
 
-EventGallerySchema.index({ eventId: 1 }, { unique: true });
-
 export const EventGallery = model<IEventGallery>('EventGallery', EventGallerySchema);

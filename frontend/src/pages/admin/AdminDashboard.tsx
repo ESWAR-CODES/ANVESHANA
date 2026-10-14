@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { eventService } from '../../services/eventService';
 import type { ClubEvent } from '../../types/event';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -12,13 +12,24 @@ import { FeedbackModerationSection } from '../../components/admin/FeedbackModera
 import { GalleryManagementSection } from '../../components/admin/GalleryManagementSection';
 import { TeamManagementSection } from '../../components/admin/TeamManagementSection';
 import { ClubSettingsSection } from '../../components/admin/ClubSettingsSection';
+import { WebsiteContentSection } from '../../components/admin/WebsiteContentSection';
+import { RegistrationFormsSection } from '../../components/admin/RegistrationFormsSection';
 
 export const AdminDashboard: React.FC = () => {
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Navigation tab in Admin
-  const [activeTab, setActiveTab] = useState<'events' | 'gallery' | 'team' | 'feedback' | 'settings'>('events');
+  const validTabs = ['events', 'forms', 'gallery', 'team', 'feedback', 'content', 'settings'] as const;
+  type TabType = typeof validTabs[number];
+
+  const currentTabParam = searchParams.get('tab') as TabType;
+  const activeTab: TabType =
+    currentTabParam && validTabs.includes(currentTabParam) ? currentTabParam : 'events';
+
+  const setActiveTab = (tab: TabType) => {
+    setSearchParams({ tab });
+  };
 
   // Events management states
   const [events, setEvents] = useState<ClubEvent[]>([]);
@@ -183,6 +194,20 @@ export const AdminDashboard: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('forms')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-left ${
+                activeTab === 'forms'
+                  ? 'bg-[#1C2541] text-[#F5A623] border border-[#F5A623]/30 shadow-xs'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Registration Forms</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('gallery')}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-left ${
                 activeTab === 'gallery'
@@ -222,6 +247,20 @@ export const AdminDashboard: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
               <span>Feedback Review</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('content')}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer text-left ${
+                activeTab === 'content'
+                  ? 'bg-[#1C2541] text-[#F5A623] border border-[#F5A623]/30'
+                  : 'text-gray-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+              <span>Website Content</span>
             </button>
 
             <button
@@ -286,6 +325,31 @@ export const AdminDashboard: React.FC = () => {
             </button>
           </div>
         </header>
+
+        {/* Mobile Horizontal Navigation Strip */}
+        <div className="md:hidden bg-[#0B132B] text-white px-4 py-2 flex items-center gap-2 overflow-x-auto border-b border-[#1C2541]">
+          {[
+            { id: 'events', label: 'Events' },
+            { id: 'forms', label: 'Registration Forms' },
+            { id: 'gallery', label: 'Gallery' },
+            { id: 'team', label: 'Core Team' },
+            { id: 'feedback', label: 'Feedback' },
+            { id: 'content', label: 'Website Content' },
+            { id: 'settings', label: 'Settings' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-[#1C2541] text-[#F5A623] border border-[#F5A623]/30'
+                  : 'text-gray-300 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {/* Body content */}
         <main className="p-6 md:p-8 space-y-6 flex-1 overflow-y-auto max-w-7xl w-full mx-auto">
@@ -472,6 +536,9 @@ export const AdminDashboard: React.FC = () => {
             </>
           )}
 
+          {/* Registration Forms Tab */}
+          {activeTab === 'forms' && <RegistrationFormsSection />}
+
           {/* Feedback Moderation Tab */}
           {activeTab === 'feedback' && <FeedbackModerationSection />}
 
@@ -480,6 +547,9 @@ export const AdminDashboard: React.FC = () => {
 
           {/* Core Team Management Tab */}
           {activeTab === 'team' && <TeamManagementSection />}
+
+          {/* Website Content CMS Tab */}
+          {activeTab === 'content' && <WebsiteContentSection />}
 
           {/* Club Settings Tab */}
           {activeTab === 'settings' && <ClubSettingsSection />}
@@ -509,6 +579,14 @@ export const AdminDashboard: React.FC = () => {
           eventTitle={formBuilderEvent.title}
           initialSchema={formBuilderEvent.formSchema || []}
           initialVersion={formBuilderEvent.formVersion || 1}
+          initialTitle={formBuilderEvent.formTitle}
+          initialDescription={formBuilderEvent.formDescription}
+          initialDraft={formBuilderEvent.formDraft}
+          initialDraftTitle={formBuilderEvent.formDraftTitle}
+          initialDraftDescription={formBuilderEvent.formDraftDescription}
+          registeredCount={formBuilderEvent.registeredCount || 0}
+          maxParticipants={formBuilderEvent.maxParticipants}
+          isRegistrationOpen={formBuilderEvent.isRegistrationOpen}
           onSaved={(newVersion) => {
             setActionNotice(`Form schema updated to Version ${newVersion} for "${formBuilderEvent.title}".`);
             fetchEvents();

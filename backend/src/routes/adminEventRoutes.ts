@@ -7,7 +7,11 @@ import {
   togglePublishEvent,
   archiveAdminEvent,
   deleteAdminEvent,
+  getAdminEventForm,
+  saveAdminEventFormDraft,
   updateEventFormSchema,
+  closeAdminEventRegistration,
+  getAdminEventFormVersions,
 } from '../controllers/eventController';
 import {
   getEventRegistrations,
@@ -32,7 +36,14 @@ router.get('/', getAdminEvents);
 router.get('/:id', getAdminEventById);
 router.post('/', handleBannerUpload, createAdminEvent);
 router.put('/:id', handleBannerUpload, updateAdminEvent);
+
+// Dynamic Registration Form Builder Endpoints
+router.get('/:id/form', getAdminEventForm);
+router.put('/:id/form/draft', saveAdminEventFormDraft);
 router.put('/:id/form', updateEventFormSchema);
+router.patch('/:id/form/close', closeAdminEventRegistration);
+router.get('/:id/form/versions', getAdminEventFormVersions);
+
 router.patch('/:id/publish', togglePublishEvent);
 router.patch('/:id/archive', archiveAdminEvent);
 router.delete('/:id', deleteAdminEvent);

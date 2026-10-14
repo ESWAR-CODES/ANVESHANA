@@ -43,7 +43,14 @@ export const uploadImageBuffer = async (
       },
       (error, result: UploadApiResponse | undefined) => {
         if (error || !result) {
-          return reject(error || new Error('Cloudinary upload returned empty response'));
+          const errMsg =
+            (error as any)?.message ||
+            (typeof error === 'string' ? error : 'Cloudinary upload returned empty response');
+          const errObj = new Error(errMsg);
+          if (error && typeof error === 'object') {
+            Object.assign(errObj, error);
+          }
+          return reject(errObj);
         }
         resolve({
           publicId: result.public_id,
@@ -51,6 +58,15 @@ export const uploadImageBuffer = async (
         });
       }
     );
+
+    uploadStream.on('error', (err: any) => {
+      const errMsg = err?.message || 'Cloudinary upload stream failed';
+      const errObj = new Error(errMsg);
+      if (err && typeof err === 'object') {
+        Object.assign(errObj, err);
+      }
+      reject(errObj);
+    });
 
     uploadStream.end(buffer);
   });

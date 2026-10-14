@@ -70,6 +70,8 @@ export const getEventFormSchema = async (req: Request, res: Response): Promise<v
         eventId: event._id,
         eventSlug: event.slug,
         eventTitle: event.title,
+        formTitle: event.formTitle || event.title,
+        formDescription: event.formDescription || '',
         formVersion: event.formVersion || 1,
         formSchema: event.formSchema || [],
         isRegistrationOpen,

@@ -36,7 +36,6 @@ const TeamCategorySchema = new Schema<ITeamCategory>(
   }
 );
 
-TeamCategorySchema.index({ slug: 1 }, { unique: true });
 TeamCategorySchema.index({ displayOrder: 1 });
 TeamCategorySchema.index({ isActive: 1 });
 

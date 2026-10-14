@@ -17,7 +17,7 @@ const FormFieldConfigSchema = new Schema(
     id: { type: String, required: true },
     type: {
       type: String,
-      enum: ['text', 'textarea', 'email', 'phone', 'number', 'select', 'dropdown', 'radio', 'checkbox', 'date', 'url'],
+      enum: ['text', 'textarea', 'email', 'phone', 'number', 'select', 'dropdown', 'radio', 'checkbox', 'date', 'url', 'yes_no'],
       required: true,
     },
     label: { type: String, required: true, trim: true },
@@ -36,6 +36,8 @@ const FormVersionSnapshotSchema = new Schema(
   {
     version: { type: Number, required: true },
     schema: { type: [FormFieldConfigSchema], required: true },
+    title: { type: String, default: '', trim: true },
+    description: { type: String, default: '', trim: true },
     publishedAt: { type: Date, default: Date.now },
   },
   { _id: false }
@@ -137,9 +139,33 @@ const EventSchema = new Schema<IEvent>(
       default: 0,
       min: 0,
     },
+    formTitle: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    formDescription: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     formSchema: {
       type: [FormFieldConfigSchema],
       default: [],
+    },
+    formDraft: {
+      type: [FormFieldConfigSchema],
+      default: null,
+    },
+    formDraftTitle: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    formDraftDescription: {
+      type: String,
+      default: '',
+      trim: true,
     },
     formVersion: {
       type: Number,
@@ -149,6 +175,11 @@ const EventSchema = new Schema<IEvent>(
     formHistory: {
       type: [FormVersionSnapshotSchema],
       default: [],
+    },
+    formStatus: {
+      type: String,
+      enum: ['no_form', 'draft', 'published', 'closed'],
+      default: 'no_form',
     },
     regOpenDate: {
       type: Date,
@@ -176,7 +207,6 @@ const EventSchema = new Schema<IEvent>(
 );
 
 // Indexes
-EventSchema.index({ slug: 1 }, { unique: true });
 EventSchema.index({ status: 1, eventDate: -1 });
 EventSchema.index({ isPublished: 1, eventDate: 1 });
 EventSchema.index({ isArchived: 1 });
@@ -259,6 +289,38 @@ EventSchema.methods.canAcceptRegistrations = function (
     return { allowed: false, reason: 'Event has reached its maximum participant capacity' };
   }
   return { allowed: true };
+};
+
+/**
+ * Computes form registration status: 'no_form' | 'draft' | 'published' | 'closed'
+ */
+EventSchema.methods.getFormStatus = function (): 'no_form' | 'draft' | 'published' | 'closed' {
+  if (this.isDeleted || this.isArchived || this.status === 'archived' || this.status === 'closed') {
+    if (this.formSchema && this.formSchema.length > 0) return 'closed';
+  }
+  const now = new Date();
+  if (this.eventDate && this.eventDate < now) {
+    if (this.formSchema && this.formSchema.length > 0) return 'closed';
+  }
+  if (this.maxParticipants !== null && this.maxParticipants !== undefined && this.registeredCount >= this.maxParticipants) {
+    if (this.formSchema && this.formSchema.length > 0) return 'closed';
+  }
+  if (this.regCloseDate && now > this.regCloseDate) {
+    if (this.formSchema && this.formSchema.length > 0) return 'closed';
+  }
+  if (this.registrationDeadline && now > this.registrationDeadline) {
+    if (this.formSchema && this.formSchema.length > 0) return 'closed';
+  }
+  if (this.formSchema && this.formSchema.length > 0) {
+    if (this.isPublished && this.status !== 'closed' && this.status !== 'draft') {
+      return 'published';
+    }
+    return 'closed';
+  }
+  if (this.formDraft && this.formDraft.length > 0) {
+    return 'draft';
+  }
+  return 'no_form';
 };
 
 export const Event = model<IEvent>('Event', EventSchema);
