@@ -6,7 +6,17 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.string().default('5000').transform((val) => parseInt(val, 10)),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  CLIENT_URL: z.string().default('http://localhost:5173'),
+  CLIENT_URL: z.string().optional().default(() => {
+    return (
+      process.env.CLIENT_URL ||
+      process.env.CORS_URL ||
+      process.env.CROS_URL ||
+      process.env.cros_url ||
+      process.env.cors_url ||
+      process.env.FRONTEND_URL ||
+      'https://anveshana-rho.vercel.app,http://localhost:5173'
+    );
+  }),
   
   // Database: Optional at import-time to allow offline testing / schema compilation
   MONGO_URI: z.string().optional().default(''),

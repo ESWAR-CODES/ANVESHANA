@@ -1,7 +1,14 @@
 import axios from 'axios';
 
 const rawBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
+let API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
+
+// Guard against duplicating /api/v1 or /api if included in VITE_API_URL
+if (API_BASE_URL.endsWith('/api/v1')) {
+  API_BASE_URL = API_BASE_URL.slice(0, -7);
+} else if (API_BASE_URL.endsWith('/api')) {
+  API_BASE_URL = API_BASE_URL.slice(0, -4);
+}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
