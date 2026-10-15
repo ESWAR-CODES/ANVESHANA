@@ -23,6 +23,11 @@ const app = express();
 const PORT = env.PORT || 5000;
 const CLIENT_URL = env.CLIENT_URL || 'http://localhost:5173';
 
+// Trust proxy in production (Render, Vercel, Railway, AWS, Cloudflare)
+if (env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Security Headers via Helmet
 app.use(helmet({
   contentSecurityPolicy: {
@@ -34,12 +39,31 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
     },
   },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginEmbedderPolicy: false,
 }));
 
-// Strict CORS Configuration
+// Robust CORS Configuration supporting single or multiple origins
+const rawClientUrl = env.CLIENT_URL || 'http://localhost:5173';
+const allowedOrigins = rawClientUrl
+  .split(',')
+  .map((url) => url.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. server health monitors, curl)
+    if (!origin) return callback(null, true);
+    const normalized = origin.replace(/\/+$/, '');
+    if (allowedOrigins.includes(normalized) || allowedOrigins.includes('*')) {
+      return callback(null, true);
+    }
+    // Allow localhost during non-production
+    if (env.NODE_ENV !== 'production' && /^https?:\/\/localhost(:\d+)?$/.test(normalized)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS origin not allowed: ${origin}`));
+  },
   credentials: true,
 }));
 
@@ -106,15 +130,67 @@ app.get('/api/v1/admin/test-protected', requireAdmin, (req: Request, res: Respon
   });
 });
 
+// 404 Handler for undefined API routes
+app.use('/api', (_req: Request, res: Response) => {
+  res.status(404).json({
+    success: false,
+    data: null,
+    error: 'The requested API endpoint does not exist',
+  });
+});
+
+// Centralized error handler
+app.use((err: any, _req: Request, res: Response, _next: express.NextFunction) => {
+  if (err?.message?.includes('CORS origin not allowed')) {
+    res.status(403).json({
+      success: false,
+      data: null,
+      error: err.message,
+    });
+    return;
+  }
+  const statusCode = err?.status || err?.statusCode || 500;
+  const message = env.NODE_ENV === 'production' && statusCode === 500
+    ? 'An internal server error occurred'
+    : err?.message || 'Internal server error';
+
+  res.status(statusCode).json({
+    success: false,
+    data: null,
+    error: message,
+  });
+});
+
+let server: any;
+
 if (process.env.NODE_ENV !== 'test' && !process.env.PORT_OVERRIDE) {
   // Attempt DB connection on boot if configured; non-blocking
   connectDB().catch((err) => {
     console.warn('[Database] Initial connection skipped or failed:', err.message);
   });
 
-  app.listen(PORT, () => {
-    console.log(`[Server] Anveshana Backend running on http://localhost:${PORT}`);
+  server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Server] Anveshana Backend running on http://0.0.0.0:${PORT} [${env.NODE_ENV}]`);
   });
+
+  const shutdown = async (signal: string) => {
+    console.log(`[Server] Received ${signal}. Gracefully shutting down...`);
+    if (server) {
+      server.close(() => {
+        console.log('[Server] HTTP server closed.');
+        process.exit(0);
+      });
+      setTimeout(() => {
+        console.error('[Server] Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000).unref();
+    } else {
+      process.exit(0);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 export default app;

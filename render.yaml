@@ -1,0 +1,68 @@
+# Render Blueprint Specification for Anveshana Club Web Platform
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  # ==========================================
+  # Backend Web Service (Node.js + Express)
+  # ==========================================
+  - type: web
+    name: anveshana-backend
+    runtime: node
+    plan: free
+    region: singapore # Options: singapore, oregon, ohio, frankfurt
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGO_URI
+        sync: false # Set securely in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true # Render automatically generates a secure 32-char secret
+      - key: JWT_EXPIRES_IN
+        value: 2h
+      - key: CLIENT_URL
+        sync: false # Set to frontend URL (e.g. https://anveshana-club.vercel.app)
+      - key: COOKIE_SAME_SITE
+        value: none # Required for cross-domain cookies (Vercel + Render)
+      - key: COOKIE_SECURE
+        value: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ADMIN_DEFAULT_EMAIL
+        sync: false # e.g. lead@anveshana-mbu.in
+      - key: ADMIN_DEFAULT_PASSWORD
+        sync: false
+
+  # ==========================================
+  # Optional Frontend Static Site on Render
+  # (Can also be deployed directly to Vercel)
+  # ==========================================
+  - type: web
+    name: anveshana-frontend
+    runtime: static
+    plan: free
+    region: singapore
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    autoDeploy: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: anveshana-backend
+          type: web
+          property: host

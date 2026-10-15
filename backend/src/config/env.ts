@@ -21,6 +21,10 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().optional().default(''),
   CLOUDINARY_API_KEY: z.string().optional().default(''),
   CLOUDINARY_API_SECRET: z.string().optional().default(''),
+
+  // Production cookie & proxy options
+  COOKIE_SAME_SITE: z.enum(['lax', 'strict', 'none']).optional(),
+  COOKIE_SECURE: z.string().optional().transform((val) => val === undefined ? undefined : val === 'true'),
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -29,13 +29,18 @@ export const verifyToken = (token: string): TokenPayload => {
 
 /**
  * Returns secure cookie settings for storing JWT in HttpOnly cookies.
+ * In cross-site production deployments (e.g. Vercel frontend + Render backend),
+ * sameSite defaults to 'none' with secure: true to permit cross-domain API credentials.
  */
 export const getAuthCookieOptions = (): CookieOptions => {
   const isProduction = env.NODE_ENV === 'production';
+  const sameSite = env.COOKIE_SAME_SITE ?? (isProduction ? 'none' : 'lax');
+  const secure = env.COOKIE_SECURE ?? (isProduction || sameSite === 'none');
+
   return {
     httpOnly: true, // Prevents JavaScript client-side theft
-    secure: isProduction, // Set to true in production over HTTPS
-    sameSite: isProduction ? 'strict' : 'lax', // CSRF protection
+    secure,
+    sameSite,
     maxAge: 2 * 60 * 60 * 1000, // 2 hours in ms
     path: '/',
   };
@@ -46,10 +51,13 @@ export const getAuthCookieOptions = (): CookieOptions => {
  */
 export const getClearCookieOptions = (): CookieOptions => {
   const isProduction = env.NODE_ENV === 'production';
+  const sameSite = env.COOKIE_SAME_SITE ?? (isProduction ? 'none' : 'lax');
+  const secure = env.COOKIE_SECURE ?? (isProduction || sameSite === 'none');
+
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    secure,
+    sameSite,
     path: '/',
   };
 };

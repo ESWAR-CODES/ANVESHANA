@@ -13,8 +13,15 @@
     "build:frontend": "npm --prefix frontend run build",
     "build:backend": "npm --prefix backend run build",
     "build": "npm run build:backend && npm run build:frontend",
+    "start": "npm --prefix backend run start",
+    "test:backend": "npm --prefix backend test",
+    "test": "npm --prefix backend test",
+    "seed": "npm --prefix backend run seed",
+    "seed:admin": "npm --prefix backend run seed:admin",
+    "seed:categories": "npm --prefix backend run seed:categories",
     "lint:frontend": "npm --prefix frontend run lint",
-    "lint:backend": "npm --prefix backend run lint"
+    "lint:backend": "npm --prefix backend run lint",
+    "lint": "npm run lint:backend && npm run lint:frontend"
   },
   "keywords": [
     "anveshana",
