@@ -35,8 +35,12 @@ export const connectDB = async (): Promise<boolean> => {
 
   try {
     await mongoose.connect(env.MONGO_URI, {
+      maxPoolSize: 25,
+      minPoolSize: 5,
       serverSelectionTimeoutMS: 5000,
-      autoIndex: true,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      autoIndex: env.NODE_ENV !== 'production',
     });
     console.log('[Database] Successfully connected to MongoDB Atlas');
     return true;

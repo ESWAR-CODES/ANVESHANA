@@ -7,6 +7,7 @@ import { slugify } from '../utils/slugify';
 import { uploadImageBuffer, deleteCloudinaryImage, isCloudinaryConfigured } from '../config/cloudinary';
 import { getDbStatus } from '../config/db';
 import { validateFormSchemaDefinition } from '../utils/formValidator';
+import { escapeRegex } from '../utils/sanitize';
 
 const eventInputSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(100, 'Title cannot exceed 100 characters'),
@@ -82,11 +83,11 @@ export const getPublicEvents = async (req: Request, res: Response): Promise<void
     };
 
     if (category && typeof category === 'string' && category.trim()) {
-      filter.category = { $regex: category.trim(), $options: 'i' };
+      filter.category = { $regex: escapeRegex(category.trim()), $options: 'i' };
     }
 
     if (search && typeof search === 'string' && search.trim()) {
-      const q = search.trim();
+      const q = escapeRegex(search.trim());
       filter.$or = [
         { title: { $regex: q, $options: 'i' } },
         { shortDescription: { $regex: q, $options: 'i' } },
@@ -242,7 +243,7 @@ export const getAdminEvents = async (req: Request, res: Response): Promise<void>
     }
 
     if (search && typeof search === 'string' && search.trim()) {
-      filter.title = { $regex: search.trim(), $options: 'i' };
+      filter.title = { $regex: escapeRegex(search.trim()), $options: 'i' };
     }
 
     const [events, total] = await Promise.all([

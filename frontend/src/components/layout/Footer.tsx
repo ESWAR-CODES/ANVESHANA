@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { settingsService } from '../../services/settingsService';
 import type { ClubSettings } from '../../types/settings';
+import { sanitizeUrl } from '../../utils/url';
 
 export const Footer: React.FC = () => {
   const [settings, setSettings] = useState<ClubSettings | null>(null);
@@ -92,7 +93,7 @@ export const Footer: React.FC = () => {
               <div className="flex items-center gap-4 pt-2 text-gray-400">
                 {socialLinks.instagram && (
                   <a
-                    href={socialLinks.instagram}
+                    href={sanitizeUrl(socialLinks.instagram)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Instagram"
@@ -105,7 +106,7 @@ export const Footer: React.FC = () => {
                 )}
                 {socialLinks.linkedin && (
                   <a
-                    href={socialLinks.linkedin}
+                    href={sanitizeUrl(socialLinks.linkedin)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="LinkedIn"
@@ -118,7 +119,7 @@ export const Footer: React.FC = () => {
                 )}
                 {socialLinks.github && (
                   <a
-                    href={socialLinks.github}
+                    href={sanitizeUrl(socialLinks.github)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="GitHub"
@@ -131,7 +132,7 @@ export const Footer: React.FC = () => {
                 )}
                 {socialLinks.twitter && (
                   <a
-                    href={socialLinks.twitter}
+                    href={sanitizeUrl(socialLinks.twitter)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="Twitter / X"
@@ -144,7 +145,7 @@ export const Footer: React.FC = () => {
                 )}
                 {socialLinks.youtube && (
                   <a
-                    href={socialLinks.youtube}
+                    href={sanitizeUrl(socialLinks.youtube)}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label="YouTube"

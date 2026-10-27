@@ -5,6 +5,7 @@ import { TeamMember } from '../models/TeamMember';
 import { getDbStatus } from '../config/db';
 import { uploadImageBuffer, deleteCloudinaryImage } from '../config/cloudinary';
 import { REQUIRED_TEAM_CATEGORIES, ensureTwoTeamCategoriesAndMigrate } from '../scripts/seedCategories';
+import { escapeRegex } from '../utils/sanitize';
 
 /**
  * Public: Retrieve active team categories and their published team members.
@@ -143,9 +144,10 @@ export const getAdminTeamMembers = async (req: Request, res: Response): Promise<
     }
 
     if (search && typeof search === 'string' && search.trim()) {
+      const q = escapeRegex(search.trim());
       filter.$or = [
-        { name: { $regex: search.trim(), $options: 'i' } },
-        { designation: { $regex: search.trim(), $options: 'i' } },
+        { name: { $regex: q, $options: 'i' } },
+        { designation: { $regex: q, $options: 'i' } },
       ];
     }
 

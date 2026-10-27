@@ -324,8 +324,8 @@ export const submitRegistration = async (req: Request, res: Response): Promise<v
         formVersion: event.formVersion || 1,
         answers: validationResult.sanitizedAnswers,
         identifier: normalizedIdentifier,
-        studentId: studentId ? studentId.toUpperCase().trim() : undefined,
-        email: email ? email.toLowerCase().trim() : undefined,
+        studentId: studentId && studentId.trim().length > 0 ? studentId.trim().toUpperCase() : undefined,
+        email: email && email.trim().length > 0 ? email.trim().toLowerCase() : undefined,
         submittedAt: new Date(),
       });
 

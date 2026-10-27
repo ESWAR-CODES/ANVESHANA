@@ -3,6 +3,43 @@ import { Request, Response, NextFunction } from 'express';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
+/**
+ * Validates file signature (magic bytes) to prevent file-type spoofing and polyglot payloads.
+ * Supports JPEG (FF D8 FF), PNG (89 50 4E 47), and WebP (RIFF....WEBP).
+ */
+export const isValidImageBuffer = (buffer: Buffer): boolean => {
+  if (!buffer || buffer.length < 12) {
+    return false;
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return true;
+  }
+  // PNG: 89 50 4E 47
+  if (
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  ) {
+    return true;
+  }
+  // WebP: RIFF (bytes 0-3) + WEBP (bytes 8-11)
+  if (
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  ) {
+    return true;
+  }
+  return false;
+};
+
 const fileFilter = (
   _req: Request,
   file: Express.Multer.File,
@@ -60,6 +97,16 @@ export const handleBannerUpload = (
       });
       return;
     }
+    if (req.file && req.file.buffer) {
+      if (!isValidImageBuffer(req.file.buffer)) {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Invalid file signature. File content does not match a valid JPEG, PNG, or WebP image.',
+        });
+        return;
+      }
+    }
     next();
   });
 };
@@ -103,6 +150,16 @@ export const handleGalleryPhotoUpload = (
         error: err.message || 'Error uploading gallery photo',
       });
       return;
+    }
+    if (req.file && req.file.buffer) {
+      if (!isValidImageBuffer(req.file.buffer)) {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Invalid file signature. File content does not match a valid JPEG, PNG, or WebP image.',
+        });
+        return;
+      }
     }
     next();
   });
@@ -148,6 +205,16 @@ export const handleTeamPhotoUpload = (
       });
       return;
     }
+    if (req.file && req.file.buffer) {
+      if (!isValidImageBuffer(req.file.buffer)) {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Invalid file signature. File content does not match a valid JPEG, PNG, or WebP image.',
+        });
+        return;
+      }
+    }
     next();
   });
 };
@@ -192,6 +259,16 @@ export const handleLogoUpload = (
       });
       return;
     }
+    if (req.file && req.file.buffer) {
+      if (!isValidImageBuffer(req.file.buffer)) {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Invalid file signature. File content does not match a valid JPEG, PNG, or WebP image.',
+        });
+        return;
+      }
+    }
     next();
   });
 };
@@ -235,6 +312,16 @@ export const handleHeroBackgroundUpload = (
         error: err.message || 'Error uploading hero background image',
       });
       return;
+    }
+    if (req.file && req.file.buffer) {
+      if (!isValidImageBuffer(req.file.buffer)) {
+        res.status(400).json({
+          success: false,
+          data: null,
+          error: 'Invalid file signature. File content does not match a valid JPEG, PNG, or WebP image.',
+        });
+        return;
+      }
     }
     next();
   });

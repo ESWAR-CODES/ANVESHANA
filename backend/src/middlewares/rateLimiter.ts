@@ -42,3 +42,17 @@ export const feedbackRateLimiter = rateLimit({
     });
   },
 });
+
+export const uploadRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'test' ? 100 : 30, // 30 uploads per 15 minutes per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      data: null,
+      error: 'Upload rate limit exceeded. Please wait a few minutes before uploading more assets.',
+    });
+  },
+});

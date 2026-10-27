@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { Feedback } from '../models/Feedback';
 import { getDbStatus } from '../config/db';
 import { FeedbackStatus } from '../types/models';
+import { escapeRegex } from '../utils/sanitize';
 
 /**
  * Public: Submit rating and feedback for the club.
@@ -196,7 +197,7 @@ export const getAdminFeedback = async (req: Request, res: Response): Promise<voi
     }
 
     if (search && typeof search === 'string' && search.trim()) {
-      filter.feedbackText = { $regex: search.trim(), $options: 'i' };
+      filter.feedbackText = { $regex: escapeRegex(search.trim()), $options: 'i' };
     }
 
     const [feedbacks, total, pendingCount, reviewedCount, archivedCount, stats] = await Promise.all([

@@ -1,0 +1,7 @@
+# robots.txt for Anveshana Club (Mohan Babu University)
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Allow: /
+
+Sitemap: https://anveshana-rho.vercel.app/sitemap.xml

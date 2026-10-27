@@ -11,6 +11,7 @@ import {
   ParticipantExportRecord,
 } from '../utils/exportUtils';
 import { FormFieldConfig } from '../types/models';
+import { escapeRegex } from '../utils/sanitize';
 
 /**
  * Normalizes participant summary properties across different submission variations.
@@ -144,7 +145,7 @@ export const getEventRegistrations = async (req: Request, res: Response): Promis
     }
 
     if (search && typeof search === 'string' && search.trim()) {
-      const q = search.trim();
+      const q = escapeRegex(search.trim());
       filter.$or = [
         { referenceNumber: { $regex: q, $options: 'i' } },
         { studentId: { $regex: q, $options: 'i' } },
@@ -411,7 +412,7 @@ export const getAllParticipants = async (req: Request, res: Response): Promise<v
     }
 
     if (search && typeof search === 'string' && search.trim()) {
-      const q = search.trim();
+      const q = escapeRegex(search.trim());
       filter.$or = [
         { referenceNumber: { $regex: q, $options: 'i' } },
         { studentId: { $regex: q, $options: 'i' } },

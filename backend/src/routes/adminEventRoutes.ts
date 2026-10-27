@@ -30,6 +30,7 @@ import {
 } from '../controllers/galleryController';
 import { requireAdmin } from '../middlewares/auth';
 import { handleBannerUpload, handleGalleryPhotoUpload } from '../middlewares/upload';
+import { uploadRateLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
 
@@ -38,8 +39,8 @@ router.use(requireAdmin);
 
 router.get('/', getAdminEvents);
 router.get('/:id', getAdminEventById);
-router.post('/', handleBannerUpload, createAdminEvent);
-router.put('/:id', handleBannerUpload, updateAdminEvent);
+router.post('/', uploadRateLimiter, handleBannerUpload, createAdminEvent);
+router.put('/:id', uploadRateLimiter, handleBannerUpload, updateAdminEvent);
 
 // Dynamic Registration Form Builder Endpoints
 router.get('/:id/form', getAdminEventForm);
@@ -62,7 +63,7 @@ router.delete('/:id/participants', clearEventParticipants);
 
 // Event Retrospective Gallery Endpoints (5MB per-photo limit)
 router.get('/:id/gallery', getAdminEventGallery);
-router.post('/:id/gallery', handleGalleryPhotoUpload, uploadGalleryImage);
+router.post('/:id/gallery', uploadRateLimiter, handleGalleryPhotoUpload, uploadGalleryImage);
 router.delete('/:id/gallery/:publicId', deleteGalleryImage);
 router.delete('/:id/gallery', deleteGalleryImage);
 router.put('/:id/gallery', updateGalleryImages);

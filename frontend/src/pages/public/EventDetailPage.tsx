@@ -289,10 +289,9 @@ export const EventDetailPage: React.FC = () => {
               <p className="text-sm font-medium text-gray-800 bg-[#F3F4F6] p-4 rounded-xl border border-[#E2E8F0]">
                 {event.shortDescription}
               </p>
-              <div
-                className="text-sm text-gray-700 leading-relaxed whitespace-pre-line"
-                dangerouslySetInnerHTML={{ __html: event.fullDescription }}
-              />
+              <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                {event.fullDescription}
+              </div>
             </div>
           </div>
 

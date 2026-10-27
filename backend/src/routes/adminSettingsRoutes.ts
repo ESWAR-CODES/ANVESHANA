@@ -11,6 +11,7 @@ import {
 } from '../controllers/settingsController';
 import { requireAdmin } from '../middlewares/auth';
 import { handleLogoUpload, handleHeroBackgroundUpload } from '../middlewares/upload';
+import { uploadRateLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
 
@@ -21,13 +22,13 @@ router.get('/', getAdminSettings);
 router.put('/', updateAdminSettings);
 
 // Dual Logo Management Routes
-router.post('/logo/club', handleLogoUpload, uploadClubLogo);
-router.post('/logo/university', handleLogoUpload, uploadUniversityLogo);
+router.post('/logo/club', uploadRateLimiter, handleLogoUpload, uploadClubLogo);
+router.post('/logo/university', uploadRateLimiter, handleLogoUpload, uploadUniversityLogo);
 router.delete('/logo/club', deleteClubLogo);
 router.delete('/logo/university', deleteUniversityLogo);
 
 // Homepage Hero Background Routes
-router.post('/hero/background', handleHeroBackgroundUpload, uploadHeroBackground);
+router.post('/hero/background', uploadRateLimiter, handleHeroBackgroundUpload, uploadHeroBackground);
 router.delete('/hero/background', deleteHeroBackground);
 
 export default router;

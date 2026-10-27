@@ -11,6 +11,7 @@
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "seed:categories": "tsx src/scripts/seedCategories.ts",
     "seed": "tsx src/scripts/seedAll.ts",
+    "test:load": "tsx src/scripts/loadTest.ts",
     "lint": "eslint . --ext .ts"
   },
   "keywords": [
